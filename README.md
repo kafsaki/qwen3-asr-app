@@ -86,6 +86,10 @@ npm install
 | POST | `/api/align` | 文稿对齐 |
 | GET | `/api/download/{folder}` | 下载结果 |
 
+## 原作者
+
+本项目基于 [生活作弊码](https://www.bilibili.com/video/BV11Sge6AETP/) 的 Qwen3-ASR Pro 懒人包重构，感谢原作者的卓越贡献。
+
 ## 致敬开源
 
 - [Alibaba Qwen Team](https://github.com/QwenLM/Qwen3-ASR) - Qwen3-ASR 基础模型

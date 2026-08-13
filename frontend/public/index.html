@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qwen3-ASR Pro 离线增强版</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>Qwen3-ASR Pro 离线增强版</h1>
+    <p class="subtitle">超长音频转写 · 精准角色识别 · 热词注入 · 文稿对齐</p>
+    <div class="status-bar">
+      <span id="backendStatus" class="status-dot offline"></span>
+      <span id="backendStatusText">检测后端...</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="single">单音频识别</button>
+      <button class="tab-btn" data-tab="batch">批量识别</button>
+      <button class="tab-btn" data-tab="align">精准对齐</button>
+    </div>
+
+    <!-- ── Single Tab ── -->
+    <section id="tab-single" class="tab-content active">
+      <div class="panel">
+        <div class="panel-left">
+          <div class="form-group">
+            <label>上传音频</label>
+            <div class="upload-area" id="singleUploadArea">
+              <input type="file" id="singleFile" accept="audio/*" hidden>
+              <div class="upload-placeholder">
+                <span class="upload-icon">+</span>
+                <span>点击或拖拽上传音频文件</span>
+              </div>
+              <div class="upload-preview" id="singlePreview" style="display:none">
+                <span class="file-name" id="singleFileName"></span>
+                <button class="btn-remove" id="singleRemoveBtn">x</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>语种</label>
+            <select id="singleLang">
+              <option value="自动识别">自动识别</option>
+              <option value="Chinese">Chinese</option>
+              <option value="English">English</option>
+              <option value="Cantonese">Cantonese</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>热词提示</label>
+            <input type="text" id="singleHotwords" placeholder="输入专业术语，逗号分隔">
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="singleDiarize" checked>
+              <span>开启角色识别</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="singlePunc" checked>
+              <span>标点断句</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label>单行字数: <span id="singleCharsVal">20</span></label>
+            <input type="range" id="singleChars" min="5" max="100" value="20">
+          </div>
+          <button class="btn-primary" id="singleBtn">开始转写</button>
+        </div>
+        <div class="panel-right">
+          <div class="form-group">
+            <label>状态</label>
+            <div class="status-box" id="singleStatus">等待上传...</div>
+          </div>
+          <div class="form-group">
+            <label>完整文本</label>
+            <textarea id="singleText" rows="6" readonly placeholder="识别结果将显示在这里..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>SRT 预览</label>
+            <div class="srt-preview" id="singleSrt"></div>
+          </div>
+          <div class="form-group" id="singleDownloadArea" style="display:none">
+            <button class="btn-success" id="singleDownloadBtn">下载结果 (ZIP)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Batch Tab ── -->
+    <section id="tab-batch" class="tab-content">
+      <div class="panel">
+        <div class="panel-left">
+          <div class="form-group">
+            <label>批量上传</label>
+            <div class="upload-area" id="batchUploadArea">
+              <input type="file" id="batchFiles" accept="audio/*" multiple hidden>
+              <div class="upload-placeholder">
+                <span class="upload-icon">+</span>
+                <span>点击或拖拽上传多个音频文件</span>
+              </div>
+              <div class="upload-preview" id="batchPreview" style="display:none">
+                <span class="file-name" id="batchFileCount"></span>
+                <button class="btn-remove" id="batchRemoveBtn">x</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>语种</label>
+            <select id="batchLang">
+              <option value="自动识别">自动识别</option>
+              <option value="Chinese">Chinese</option>
+              <option value="English">English</option>
+              <option value="Cantonese">Cantonese</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>热词提示</label>
+            <input type="text" id="batchHotwords" placeholder="输入专业术语，逗号分隔">
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="batchDiarize" checked>
+              <span>角色识别</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="batchPunc" checked>
+              <span>标点断句</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label>单行字数: <span id="batchCharsVal">20</span></label>
+            <input type="range" id="batchChars" min="5" max="100" value="20">
+          </div>
+          <button class="btn-primary" id="batchBtn">批量处理</button>
+        </div>
+        <div class="panel-right">
+          <div class="form-group">
+            <label>状态</label>
+            <div class="status-box" id="batchStatus">等待上传...</div>
+          </div>
+          <div class="form-group">
+            <label>最后一个预览</label>
+            <div class="srt-preview" id="batchSrt"></div>
+          </div>
+          <div class="form-group">
+            <label>日志</label>
+            <div class="log-box" id="batchLog"></div>
+          </div>
+          <div class="form-group" id="batchDownloadArea" style="display:none">
+            <button class="btn-success" id="batchDownloadBtn">下载全部结果 (ZIP)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Align Tab ── -->
+    <section id="tab-align" class="tab-content">
+      <div class="panel">
+        <div class="panel-left">
+          <div class="form-group">
+            <label>上传音频</label>
+            <div class="upload-area" id="alignUploadArea">
+              <input type="file" id="alignFile" accept="audio/*" hidden>
+              <div class="upload-placeholder">
+                <span class="upload-icon">+</span>
+                <span>点击或拖拽上传音频文件</span>
+              </div>
+              <div class="upload-preview" id="alignPreview" style="display:none">
+                <span class="file-name" id="alignFileName"></span>
+                <button class="btn-remove" id="alignRemoveBtn">x</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>参考文本</label>
+            <textarea id="alignText" rows="8" placeholder="粘贴需要对齐的文稿..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>语种</label>
+            <select id="alignLang">
+              <option value="Chinese">Chinese</option>
+              <option value="English">English</option>
+              <option value="Cantonese">Cantonese</option>
+              <option value="Japanese">Japanese</option>
+            </select>
+          </div>
+          <button class="btn-primary" id="alignBtn">开始对齐</button>
+        </div>
+        <div class="panel-right">
+          <div class="form-group">
+            <label>状态</label>
+            <div class="status-box" id="alignStatus">等待上传...</div>
+          </div>
+          <div class="form-group">
+            <label>对齐 SRT 预览</label>
+            <div class="srt-preview" id="alignSrt"></div>
+          </div>
+          <div class="form-group" id="alignDownloadArea" style="display:none">
+            <button class="btn-success" id="alignDownloadBtn">下载结果 (SRT)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

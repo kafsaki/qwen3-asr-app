@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# Virtual environments
+WPy64-312101/
+VC运行库/
+
+# Node
+node_modules/
+frontend/uploads/
+
+# Outputs
+outputs/
+uploads/
+
+# Models (large files, keep local)
+models/
+
+# Binaries (ffmpeg etc, >100MB, download separately)
+bin/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Environment
+.env
+*.log

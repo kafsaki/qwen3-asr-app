@@ -11,6 +11,7 @@ VC运行库/
 # Node
 node_modules/
 frontend/uploads/
+package-lock.json
 
 # Outputs
 outputs/

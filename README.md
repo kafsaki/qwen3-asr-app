@@ -13,7 +13,6 @@
 |------|------|--------|
 | 前端 UI | 3000 | Express.js + 原生 JS |
 | 后端 API | 8000 | FastAPI + Pyannote + Qwen3-ASR |
-| 备选 WebUI | 7867 | 原始 Gradio 版本 (`app/`) |
 
 ## 硬件需求
 
@@ -25,14 +24,14 @@
 
 ### 1. 下载环境文件
 
-> 以下大文件未包含在 Git 仓库中，请从网盘下载后放到项目根目录：
+> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录，最终形成 `runtime/` 文件夹：
 
-| 文件/目录 | 说明 | 大小 |
-|-----------|------|------|
-| `WPy64-312101/` | WinPython 便携 Python 环境 (含所有依赖) | ~8GB |
-| `models/` | ASR 模型 + 说话人分离模型 | ~2GB |
-| `bin/` | ffmpeg / ffprobe / ffplay | ~630MB |
-| `VC运行库/` | VC++ Redistributable | ~25MB |
+| 目录 | 说明 | 大小 |
+|------|------|------|
+| `runtime/WPy64-312101/` | WinPython 便携 Python 环境 (含所有依赖) | ~8GB |
+| `runtime/models/` | ASR 模型 + 说话人分离模型 | ~2GB |
+| `runtime/bin/` | ffmpeg / ffprobe / ffplay | ~630MB |
+| `runtime/VC运行库/` | VC++ Redistributable | ~25MB |
 
 > 网盘链接：[待补充]
 
@@ -54,10 +53,6 @@ npm install
 1. 双击 `backend\start.bat` 启动后端 API（端口 8000）
 2. 双击 `frontend\start.bat` 启动前端界面（端口 3000）
 
-**备选：原始 Gradio 版本**
-
-双击 `一键启动WebUI.bat`，浏览器打开 `http://127.0.0.1:7867`
-
 ## 目录结构
 
 ```
@@ -72,13 +67,13 @@ npm install
 │   ├── server.js            # Web 服务器
 │   ├── public/              # 静态资源
 │   └── start.bat            # 前端启动脚本
-├── app/                     # 原始 Gradio 版本 (备选)
-├── bin/                     # ffmpeg 二进制 (需下载)
-├── models/                  # 模型文件 (需下载)
-├── WPy64-312101/            # WinPython 环境 (需下载)
-├── VC运行库/                # VC++ 运行库 (需下载)
+├── runtime/                 # 运行环境 (需从网盘下载)
+│   ├── WPy64-312101/        # WinPython 环境
+│   ├── models/              # 模型文件
+│   ├── bin/                 # ffmpeg 二进制
+│   └── VC运行库/            # VC++ 运行库
 ├── 一键启动.bat              # 一键启动前后端
-└── 一键启动WebUI.bat         # 原始 Gradio 启动
+└── README.md
 ```
 
 ## API 接口

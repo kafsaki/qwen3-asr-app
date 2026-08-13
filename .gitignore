@@ -4,9 +4,8 @@ __pycache__/
 *.egg-info/
 *.egg
 
-# Virtual environments
-WPy64-312101/
-VC运行库/
+# Runtime (download separately)
+runtime/
 
 # Node
 node_modules/
@@ -16,12 +15,6 @@ package-lock.json
 # Outputs
 outputs/
 uploads/
-
-# Models (large files, keep local)
-models/
-
-# Binaries (ffmpeg etc, >100MB, download separately)
-bin/
 
 # IDE
 .idea/

@@ -76,11 +76,16 @@ set HF_HUB_OFFLINE=1
 set ASR_CHECKPOINT=%ASR_PATH%
 set ALIGNER_CHECKPOINT=%ALIGN_PATH%
 
-echo ======================================================
-echo       Qwen3-ASR Backend API Server
+echo    ____                     _____       ___   _____ ____     ___
+echo   / __ \_      _____  ____ ^|__  /      /   ^| / ___// __ \   /   ^|  ____  ____
+echo  / / / / ^| /^| / / _ \/ __ \ /_ ^<______/ /^| ^| \__ \/ /_/ /  / /^| ^| / __ \/ __ \
+echo / /_/ /^| ^|/ ^|/ /  __/ / / /__/ /_____/ ___ ^|___/ / _, _/  / ___ ^|/ /_/ / /_/ /
+echo \___\_\^|__/^|__/\___/_/ /_/____/     /_/  ^|_/____/_/ ^|_^|  /_/  ^|_/ .___/ .___/
+echo                                                                /_/   /_/
+echo.
 echo       Python: !PYTHON_EXE!
 echo       Port: 8000
-echo ======================================================
+echo.
 echo.
 echo Starting server, loading models...
 echo This may take a few minutes on first launch.

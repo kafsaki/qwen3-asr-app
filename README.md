@@ -24,13 +24,13 @@
 
 ## 下载模型文件
 
-> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录，最终形成 `runtime/` 文件夹：
+> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录：
 
 | 目录 | 说明 | 大小 |
 |------|------|------|
-| `runtime/models/` | ASR 模型 + 说话人分离模型 | ~2GB |
-| `runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
-| `runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
+| `models/` | ASR 模型 + 说话人分离模型 | ~2GB |
+| `windows_runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
+| `windows_runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
 
 > 网盘链接：[待补充]
 
@@ -68,7 +68,7 @@ cd ..
 
 ### 4. 修改启动脚本
 
-编辑 `backend/start.bat`，将 `PYTHON_EXE` 改为你的 conda 环境路径：
+编辑 `windows_runtime/backend_start.bat`，将 `PYTHON_EXE` 改为你的 conda 环境路径：
 
 ```batch
 set "PYTHON_EXE=F:\ProgramFiles\anaconda3\envs\qwen3-asr\python.exe"
@@ -78,14 +78,14 @@ set "PYTHON_EXE=F:\ProgramFiles\anaconda3\envs\qwen3-asr\python.exe"
 
 ### 5. 启动
 
-双击 `一键启动.bat`，或分别运行：
+双击 `windows_runtime/一键启动.bat`，或分别运行：
 
 ```powershell
 # 终端1 - 后端
-backend\start.bat
+windows_runtime\backend_start.bat
 
 # 终端2 - 前端
-frontend\start.bat
+windows_runtime\frontend_start.bat
 ```
 
 浏览器访问 `http://127.0.0.1:3000`
@@ -142,8 +142,8 @@ cd ..
 # 终端1 - 后端
 conda activate qwen3-asr
 export HF_HUB_OFFLINE=1
-export ASR_CHECKPOINT="$PWD/runtime/models/Qwen/Qwen3-ASR-0.6B"
-export ALIGNER_CHECKPOINT="$PWD/runtime/models/Qwen/Qwen3-ForcedAligner-0.6B"
+export ASR_CHECKPOINT="$PWD/models/Qwen/Qwen3-ASR-0.6B"
+export ALIGNER_CHECKPOINT="$PWD/models/Qwen/Qwen3-ForcedAligner-0.6B"
 cd backend
 python server.py --ip 127.0.0.1 --port 8000
 
@@ -164,17 +164,20 @@ npm start
 │   ├── transcribe_engine.py # 转写引擎
 │   ├── model_hub.py         # 模型加载
 │   ├── audio_utils.py       # 音频处理 (ffmpeg)
-│   ├── export_utils.py      # SRT 字幕导出
-│   └── start.bat            # Windows 后端启动脚本
+│   └── export_utils.py      # SRT 字幕导出
 ├── frontend/                # Express.js 前端
 │   ├── server.js            # Web 服务器
 │   ├── public/              # 静态资源
-│   └── start.bat            # Windows 前端启动脚本
-├── runtime/                 # 运行环境 (需从网盘下载)
-│   ├── models/              # 模型文件
-│   ├── bin/                 # ffmpeg 二进制 (仅 Windows)
-│   └── VC运行库/            # VC++ 运行库 (仅 Windows)
-├── 一键启动.bat              # Windows 一键启动前后端
+│   └── package.json
+├── models/                  # 模型文件 (需从网盘下载)
+│   ├── Qwen/                # Qwen3-ASR 模型
+│   └── speaker-diarization-community-1/  # 说话人分离模型
+├── windows_runtime/         # Windows 运行环境 (需从网盘下载)
+│   ├── bin/                 # ffmpeg 二进制
+│   ├── VC运行库/            # VC++ 运行库
+│   ├── backend_start.bat    # 后端启动脚本
+│   ├── frontend_start.bat   # 前端启动脚本
+│   └── 一键启动.bat          # 一键启动前端+后端
 └── README.md
 ```
 

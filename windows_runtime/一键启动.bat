@@ -2,7 +2,7 @@
 chcp 65001 >nul
 title Qwen3-ASR Launcher
 
-set "ROOT=%~dp0"
+set "ROOT=%~dp0..\"
 
 echo ======================================================
 echo       Qwen3-ASR Pro
@@ -11,13 +11,13 @@ echo ======================================================
 echo.
 
 echo [1/2] Starting Backend API...
-start "" cmd /c ""%ROOT%backend\start.bat""
+start "" cmd /c ""%ROOT%windows_runtime\backend_start.bat""
 
 echo Waiting for backend init (10s)...
 timeout /t 10 /nobreak >nul
 
 echo [2/2] Starting Frontend Web...
-start "" cmd /c ""%ROOT%frontend\start.bat""
+start "" cmd /c ""%ROOT%windows_runtime\frontend_start.bat""
 
 echo.
 echo ======================================================

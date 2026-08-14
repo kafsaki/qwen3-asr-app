@@ -19,8 +19,7 @@ from export_utils import ExportUtils
 
 # ── Config ──────────────────────────────────────────────
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RUNTIME_DIR = os.path.join(PROJECT_ROOT, "runtime")
-MODELS_DIR = os.path.join(RUNTIME_DIR, "models")
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 OUTPUTS_DIR = os.path.join(PROJECT_ROOT, "outputs")
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
@@ -46,8 +45,8 @@ async def lifespan(app: FastAPI):
     print("Loading models...")
     hub = ModelHub()
 
-    asr_ckpt = os.environ.get("ASR_CHECKPOINT", os.path.join(RUNTIME_DIR, "models", "Qwen", "Qwen3-ASR-0.6B"))
-    aligner_ckpt = os.environ.get("ALIGNER_CHECKPOINT", os.path.join(RUNTIME_DIR, "models", "Qwen", "Qwen3-ForcedAligner-0.6B"))
+    asr_ckpt = os.environ.get("ASR_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ASR-0.6B"))
+    aligner_ckpt = os.environ.get("ALIGNER_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ForcedAligner-0.6B"))
 
     b_kwargs = {"dtype": torch.bfloat16, "device_map": "cuda:0", "max_inference_batch_size": 1, "max_new_tokens": 1024}
     a_kwargs = {"dtype": torch.bfloat16, "device_map": "cuda:0"}
@@ -250,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
 
-    os.environ.setdefault("ASR_CHECKPOINT", os.path.join(RUNTIME_DIR, "models", "Qwen", "Qwen3-ASR-0.6B"))
-    os.environ.setdefault("ALIGNER_CHECKPOINT", os.path.join(RUNTIME_DIR, "models", "Qwen", "Qwen3-ForcedAligner-0.6B"))
+    os.environ.setdefault("ASR_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ASR-0.6B"))
+    os.environ.setdefault("ALIGNER_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ForcedAligner-0.6B"))
 
     uvicorn.run(app, host=args.ip, port=args.port)

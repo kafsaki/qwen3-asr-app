@@ -6,7 +6,7 @@ echo       Port: 3000
 echo ======================================================
 echo.
 echo Installing dependencies...
-cd /d "%~dp0"
+cd /d "%~dp0..\frontend"
 call npm install
 echo.
 echo Starting frontend server...

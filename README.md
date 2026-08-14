@@ -66,19 +66,11 @@ npm install
 cd ..
 ```
 
-### 4. 修改启动脚本
+### 4. 启动
 
-编辑 `windows_runtime/backend_start.bat`，将 `PYTHON_EXE` 改为你的 conda 环境路径：
+启动脚本会自动检测 Python 环境（便携版优先，否则提示输入 conda 路径）：
 
-```batch
-set "PYTHON_EXE=F:\ProgramFiles\anaconda3\envs\qwen3-asr\python.exe"
-```
-
-> 查看 conda 环境路径：`conda info --envs`
-
-### 5. 启动
-
-双击 `windows_runtime/一键启动.bat`，或分别运行：
+双击 `windows_runtime/launcher.bat`，或分别运行：
 
 ```powershell
 # 终端1 - 后端
@@ -177,7 +169,7 @@ npm start
 │   ├── VC运行库/            # VC++ 运行库
 │   ├── backend_start.bat    # 后端启动脚本
 │   ├── frontend_start.bat   # 前端启动脚本
-│   └── 一键启动.bat          # 一键启动前端+后端
+│   └── launcher.bat          # 一键启动前端+后端
 ├── outputs/                 # 转写结果输出
 ├── uploads/                 # 临时上传文件
 └── README.md

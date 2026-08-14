@@ -1,5 +1,4 @@
 @echo off
-chcp 65001 >nul
 title Qwen3-ASR Launcher
 
 set "ROOT=%~dp0..\"

@@ -1,4 +1,3 @@
-chcp 65001 >nul
 @echo off
 setlocal enabledelayedexpansion
 title Qwen3-ASR Backend API Server
@@ -8,7 +7,7 @@ set "WINDOWS_RUNTIME=%ROOT_DIR%windows_runtime"
 set "MODELS=%ROOT_DIR%models"
 set "PATH=%WINDOWS_RUNTIME%\bin;%PATH%"
 
-:: ── Detect Python ──────────────────────────────────────
+:: --- Detect Python ---
 set "PORTABLE_PYTHON=%WINDOWS_RUNTIME%WPy64-312101\python\python.exe"
 if exist "%PORTABLE_PYTHON%" (
     set "PYTHON_EXE=%PORTABLE_PYTHON%"

@@ -178,6 +178,8 @@ npm start
 │   ├── backend_start.bat    # 后端启动脚本
 │   ├── frontend_start.bat   # 前端启动脚本
 │   └── 一键启动.bat          # 一键启动前端+后端
+├── outputs/                 # 转写结果输出
+├── uploads/                 # 临时上传文件
 └── README.md
 ```
 

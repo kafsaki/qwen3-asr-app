@@ -36,39 +36,47 @@
 
 ---
 
-## 部署方式
+## Windows 部署
 
-### 方式一：Windows（conda）
+### 1. 安装 Conda
 
-#### 1. 安装环境
+下载 [Miniconda](https://docs.conda.io/en/latest/miniconda.html) 或 [Anaconda](https://www.anaconda.com/download) 并安装。
+
+### 2. 创建环境并安装依赖
 
 ```powershell
-# 创建 conda 环境
 conda create -n qwen3-asr python=3.12 -y
 conda activate qwen3-asr
 
-# 创建项目虚拟环境
-python -m venv venv
-venv\Scripts\activate
-
-# 安装 PyTorch（CUDA 12.1）
+# PyTorch (CUDA 12.1)
 pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
 
-# 安装项目依赖
+# 项目依赖
 pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 
 # 卸载不兼容的 torchcodec（pyannote 会回退到内存模式）
-pip uninstall torchcodec -y 2>nul
+pip uninstall torchcodec -y
 ```
 
-#### 2. 安装前端依赖
+### 3. 安装前端依赖
 
 ```powershell
 cd frontend
 npm install
+cd ..
 ```
 
-#### 3. 启动
+### 4. 修改启动脚本
+
+编辑 `backend/start.bat`，将 `PYTHON_EXE` 改为你的 conda 环境路径：
+
+```batch
+set "PYTHON_EXE=F:\ProgramFiles\anaconda3\envs\qwen3-asr\python.exe"
+```
+
+> 查看 conda 环境路径：`conda info --envs`
+
+### 5. 启动
 
 双击 `一键启动.bat`，或分别运行：
 
@@ -84,58 +92,43 @@ frontend\start.bat
 
 ---
 
-### 方式二：Ubuntu（conda）
+## Ubuntu 部署
 
-#### 1. 安装系统依赖
+### 1. 安装系统依赖
 
 ```bash
-# 安装 ffmpeg
 sudo apt update
-sudo apt install ffmpeg -y
-
-# 安装 NVIDIA 驱动 + CUDA
-sudo apt install nvidia-driver-535 nvidia-cuda-toolkit -y
+sudo apt install ffmpeg nvidia-driver-535 nvidia-cuda-toolkit -y
 ```
 
-#### 2. 安装 Conda
+### 2. 安装 Conda
 
 ```bash
-# 下载 Miniconda
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 bash Miniconda3-latest-Linux-x86_64.sh
 # 重启终端后继续
 ```
 
-#### 3. 创建 Python 环境
+### 3. 创建环境并安装依赖
 
 ```bash
-# 克隆项目
 git clone git@github.com:kafsaki/qwen3-asr-app.git
 cd qwen3-asr-app
 
-# 创建 conda 环境
 conda create -n qwen3-asr python=3.12 -y
 conda activate qwen3-asr
 
-# 创建项目虚拟环境
-python -m venv venv
-source venv/bin/activate
-
-# 安装 PyTorch（CUDA 12.1）
+# PyTorch (CUDA 12.1)
 pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
 
-# 安装项目依赖
+# 项目依赖
 pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 
 # 卸载不兼容的 torchcodec
-pip uninstall torchcodec -y 2>/dev/null
+pip uninstall torchcodec -y
 ```
 
-#### 4. 放入模型文件
-
-将从网盘下载的 `runtime/models/` 放到项目根目录。
-
-#### 5. 安装前端依赖
+### 4. 安装前端依赖
 
 ```bash
 cd frontend
@@ -143,10 +136,11 @@ npm install
 cd ..
 ```
 
-#### 6. 启动
+### 5. 启动
 
 ```bash
 # 终端1 - 后端
+conda activate qwen3-asr
 export HF_HUB_OFFLINE=1
 export ASR_CHECKPOINT="$PWD/runtime/models/Qwen/Qwen3-ASR-0.6B"
 export ALIGNER_CHECKPOINT="$PWD/runtime/models/Qwen/Qwen3-ForcedAligner-0.6B"
@@ -180,7 +174,6 @@ npm start
 │   ├── models/              # 模型文件
 │   ├── bin/                 # ffmpeg 二进制 (仅 Windows)
 │   └── VC运行库/            # VC++ 运行库 (仅 Windows)
-├── venv/                    # Python 虚拟环境 (自动生成，gitignore)
 ├── 一键启动.bat              # Windows 一键启动前后端
 └── README.md
 ```

@@ -2,7 +2,7 @@
 title Qwen3-ASR Backend API Server
 set "ROOT_DIR=%~dp0..\"
 set "RUNTIME=%ROOT_DIR%runtime"
-set "PYTHON_EXE=%ROOT_DIR%venv\Scripts\python.exe"
+set "PYTHON_EXE=F:\ProgramFiles\anaconda3\envs\qwen3-asr\python.exe"
 set "PATH=%RUNTIME%\bin;%PATH%"
 set "ASR_PATH=%RUNTIME%\models\Qwen\Qwen3-ASR-0.6B"
 set "ALIGN_PATH=%RUNTIME%\models\Qwen\Qwen3-ForcedAligner-0.6B"

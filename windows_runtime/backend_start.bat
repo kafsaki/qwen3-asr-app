@@ -1,3 +1,4 @@
+chcp 65001 >nul
 @echo off
 setlocal enabledelayedexpansion
 title Qwen3-ASR Backend API Server

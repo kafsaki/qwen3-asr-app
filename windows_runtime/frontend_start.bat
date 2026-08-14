@@ -1,3 +1,4 @@
+chcp 65001 >nul
 @echo off
 title Qwen3-ASR Frontend Server
 echo ======================================================

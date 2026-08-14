@@ -178,7 +178,10 @@ pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.
 # 项目依赖
 pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 
-# 卸载不兼容的 torchcodec（pyannote 会回退到内存模式）
+# 卸载不兼容的 torchcodec
+# torchcodec 是 pyannote 的可选 GPU 音频解码器，安装 pyannote.audio 时自动拉入
+# 它与 torch 2.5.1 不兼容会报错，卸载后 pyannote 自动回退到 torchaudio 内存模式
+# 模型推理仍在 GPU 上执行，不影响性能
 pip uninstall torchcodec -y
 ```
 
@@ -237,6 +240,9 @@ pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.
 pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 
 # 卸载不兼容的 torchcodec
+# torchcodec 是 pyannote 的可选 GPU 音频解码器，安装 pyannote.audio 时自动拉入
+# 它与 torch 2.5.1 不兼容会报错，卸载后 pyannote 自动回退到 torchaudio 内存模式
+# 模型推理仍在 GPU 上执行，不影响性能
 pip uninstall torchcodec -y
 ```
 

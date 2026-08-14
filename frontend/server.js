@@ -87,6 +87,16 @@ app.post('/api/align', upload.single('file'), async (req, res) => {
   }
 });
 
+app.get('/api/status', async (req, res) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/status`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ status: 'error', error: err.message });
+  }
+});
+
 app.get('/api/download/:folder', async (req, res) => {
   try {
     const response = await fetch(`${BACKEND_URL}/api/download/${req.params.folder}`);

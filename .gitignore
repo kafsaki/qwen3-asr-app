@@ -11,7 +11,9 @@ windows_runtime/bin/*
 !windows_runtime/bin/.gitkeep
 windows_runtime/VC运行库/*
 !windows_runtime/VC运行库/.gitkeep
-windows_runtime/WPy64-312101/
+windows_runtime/WPy64-312101/*
+!windows_runtime/WPy64-312101/.gitkeep
+windows_runtime/python_path.txt
 
 # Node
 node_modules/

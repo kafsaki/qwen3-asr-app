@@ -68,12 +68,10 @@ cd ..
 
 ### 4. 启动
 
-启动脚本会自动检测 Python 环境（便携版优先，否则提示输入 conda 路径）：
-
-双击 `windows_runtime/launcher.bat`，或分别运行：
+分别运行前后端：
 
 ```powershell
-# 终端1 - 后端
+# 终端1 - 后端（启动后会提示选择 [1] 便携版 或 [2] Conda）
 windows_runtime\backend_start.bat
 
 # 终端2 - 前端
@@ -168,8 +166,7 @@ npm start
 │   ├── bin/                 # ffmpeg 二进制
 │   ├── VC运行库/            # VC++ 运行库
 │   ├── backend_start.bat    # 后端启动脚本
-│   ├── frontend_start.bat   # 前端启动脚本
-│   └── launcher.bat          # 一键启动前端+后端
+│   └── frontend_start.bat   # 前端启动脚本
 ├── outputs/                 # 转写结果输出
 ├── uploads/                 # 临时上传文件
 └── README.md

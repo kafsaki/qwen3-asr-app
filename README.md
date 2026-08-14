@@ -31,12 +31,40 @@
 | `models/` | ASR 模型 + 说话人分离模型 | ~2GB |
 | `windows_runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
 | `windows_runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
+| `windows_runtime/WPy64-312101/` | 便携版 Python 3.12 + 依赖（仅 Windows 需要） | ~3GB |
 
 > 网盘链接：[待补充]
 
 ---
 
 ## Windows 部署
+
+### 方式一：便携版 Python（推荐，无需手动配置环境）
+
+1. 从网盘下载 `WPy64-312101/` 并解压到 `windows_runtime/` 目录
+2. 安装前端依赖：
+
+```powershell
+cd frontend
+npm install
+cd ..
+```
+
+3. 运行 `windows_runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
+
+4. 启动：
+
+```powershell
+# 终端1 - 后端（启动后选择 [1] Portable Python）
+windows_runtime\backend_start.bat
+
+# 终端2 - 前端
+windows_runtime\frontend_start.bat
+```
+
+浏览器访问 `http://127.0.0.1:3000`
+
+### 方式二：Conda 环境（自行构建）
 
 ### 1. 安装 Conda
 
@@ -68,10 +96,8 @@ cd ..
 
 ### 4. 启动
 
-分别运行前后端：
-
 ```powershell
-# 终端1 - 后端（启动后会提示选择 [1] 便携版 或 [2] Conda）
+# 终端1 - 后端（启动后选择 [2] Conda，输入 python.exe 路径）
 windows_runtime\backend_start.bat
 
 # 终端2 - 前端
@@ -165,6 +191,7 @@ npm start
 ├── windows_runtime/         # Windows 运行环境 (需从网盘下载)
 │   ├── bin/                 # ffmpeg 二进制
 │   ├── VC运行库/            # VC++ 运行库
+│   ├── WPy64-312101/        # 便携版 Python 3.12 + 依赖
 │   ├── backend_start.bat    # 后端启动脚本
 │   └── frontend_start.bat   # 前端启动脚本
 ├── outputs/                 # 转写结果输出

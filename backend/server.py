@@ -42,18 +42,20 @@ def _parse_json_dict(s):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global hub, engine
-    print("Loading models...")
+    print("[Phase 1/3] Initializing model hub...", flush=True)
     hub = ModelHub()
 
     asr_ckpt = os.environ.get("ASR_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ASR-0.6B"))
     aligner_ckpt = os.environ.get("ALIGNER_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ForcedAligner-0.6B"))
 
+    print(f"[Phase 2/3] Loading ASR model from: {asr_ckpt}", flush=True)
     b_kwargs = {"dtype": torch.bfloat16, "device_map": "cuda:0", "max_inference_batch_size": 1, "max_new_tokens": 1024}
     a_kwargs = {"dtype": torch.bfloat16, "device_map": "cuda:0"}
 
     hub.load_asr(asr_ckpt, "transformers", b_kwargs, aligner_ckpt, a_kwargs)
+    print("[Phase 3/3] Initializing transcribe engine...", flush=True)
     engine = TranscribeEngine(hub)
-    print("Models loaded successfully.")
+    print("Models loaded successfully.", flush=True)
     yield
 
 

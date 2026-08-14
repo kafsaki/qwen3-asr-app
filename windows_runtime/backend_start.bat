@@ -75,7 +75,6 @@ set "ALIGN_PATH=%MODELS%\Qwen\Qwen3-ForcedAligner-0.6B"
 set HF_HUB_OFFLINE=1
 set ASR_CHECKPOINT=%ASR_PATH%
 set ALIGNER_CHECKPOINT=%ALIGN_PATH%
-set PYTHONUNBUFFERED=1
 
 echo ======================================================
 echo       Qwen3-ASR Backend API Server

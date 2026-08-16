@@ -110,7 +110,7 @@ app.get('/api/download/:folder', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`BFF server running at http://127.0.0.1:${PORT}`);
   console.log(`Model API: ${BACKEND_URL}`);
 });

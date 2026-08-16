@@ -1,4 +1,4 @@
-// server.js - Express Frontend for Qwen3-ASR
+// server.js - BFF Server for Qwen3-ASR
 const express = require('express');
 const multer = require('multer');
 const FormData = require('form-data');
@@ -111,6 +111,6 @@ app.get('/api/download/:folder', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Frontend server running at http://127.0.0.1:${PORT}`);
-  console.log(`Backend API: ${BACKEND_URL}`);
+  console.log(`BFF server running at http://127.0.0.1:${PORT}`);
+  console.log(`Model API: ${BACKEND_URL}`);
 });

@@ -13,7 +13,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         Frontend (Express.js :3000)                  │
+│                      BFF Server (Express.js :3000)                     │
 │                                                                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
 │  │ 单音频识别    │  │  批量处理     │  │  精准对齐     │              │
@@ -23,7 +23,7 @@
           │                 │                 │
           ▼                 ▼                 ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                     Backend API (FastAPI :8000)                      │
+│                   Model Server (FastAPI :8000)                        │
 │                                                                     │
 │  POST /api/transcribe         POST /api/transcribe/batch            │
 │  ┌───────────────────┐        ┌────────────────────────┐           │
@@ -138,10 +138,10 @@
 ### 方式一：便携版 Python（推荐，无需手动配置环境）
 
 1. 从网盘下载 `WPy64-312101/` 并解压到 `windows_runtime/` 目录
-2. 安装前端依赖：
+2. 安装 BFF 依赖：
 
 ```powershell
-cd frontend
+cd server
 npm install
 cd ..
 ```
@@ -151,10 +151,10 @@ cd ..
 4. 启动：
 
 ```powershell
-# 终端1 - 后端（启动后选择 [1] Portable Python）
+# 终端1 - 模型推理服务（启动后选择 [1] Portable Python）
 windows_runtime\backend_start.bat
 
-# 终端2 - 前端
+# 终端2 - BFF 服务
 windows_runtime\frontend_start.bat
 ```
 
@@ -185,10 +185,10 @@ pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 pip uninstall torchcodec -y
 ```
 
-### 3. 安装前端依赖
+### 3. 安装 BFF 依赖
 
 ```powershell
-cd frontend
+cd server
 npm install
 cd ..
 ```
@@ -196,10 +196,10 @@ cd ..
 ### 4. 启动
 
 ```powershell
-# 终端1 - 后端（启动后选择 [2] Conda，输入 python.exe 路径）
+# 终端1 - 模型推理服务（启动后选择 [2] Conda，输入 python.exe 路径）
 windows_runtime\backend_start.bat
 
-# 终端2 - 前端
+# 终端2 - BFF 服务
 windows_runtime\frontend_start.bat
 ```
 
@@ -246,10 +246,10 @@ pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 pip uninstall torchcodec -y
 ```
 
-### 4. 安装前端依赖
+### 4. 安装 BFF 依赖
 
 ```bash
-cd frontend
+cd server
 npm install
 cd ..
 ```
@@ -257,16 +257,16 @@ cd ..
 ### 5. 启动
 
 ```bash
-# 终端1 - 后端
+# 终端1 - 模型推理服务
 conda activate qwen3-asr
 export HF_HUB_OFFLINE=1
 export ASR_CHECKPOINT="$PWD/models/Qwen/Qwen3-ASR-0.6B"
 export ALIGNER_CHECKPOINT="$PWD/models/Qwen/Qwen3-ForcedAligner-0.6B"
-cd backend
+cd model_server
 python server.py --ip 127.0.0.1 --port 8000
 
-# 终端2 - 前端
-cd frontend
+# 终端2 - BFF 服务
+cd server
 npm start
 ```
 
@@ -277,15 +277,15 @@ npm start
 ## 目录结构
 
 ```
-├── backend/                 # FastAPI 后端
+├── model_server/            # 模型推理服务 (FastAPI)
 │   ├── server.py            # API 入口
 │   ├── transcribe_engine.py # 转写引擎
 │   ├── model_hub.py         # 模型加载
 │   ├── audio_utils.py       # 音频处理 (ffmpeg)
 │   └── export_utils.py      # SRT 字幕导出
-├── frontend/                # Express.js 前端
-│   ├── server.js            # Web 服务器
-│   ├── public/              # 静态资源
+├── server/                  # BFF 服务 (Express.js)
+│   ├── server.js            # Web 服务器 + API 代理
+│   ├── public/              # 静态资源 (HTML/CSS/JS)
 │   └── package.json
 ├── models/                  # 模型文件 (需从网盘下载)
 │   ├── Qwen/                # Qwen3-ASR 模型
@@ -294,8 +294,8 @@ npm start
 │   ├── bin/                 # ffmpeg 二进制
 │   ├── VC运行库/            # VC++ 运行库
 │   ├── WPy64-312101/        # 便携版 Python 3.12 + 依赖
-│   ├── backend_start.bat    # 后端启动脚本
-│   └── frontend_start.bat   # 前端启动脚本
+│   ├── backend_start.bat    # 模型推理服务启动脚本
+│   └── frontend_start.bat   # BFF 服务启动脚本
 ├── outputs/                 # 转写结果输出
 ├── uploads/                 # 临时上传文件
 └── README.md

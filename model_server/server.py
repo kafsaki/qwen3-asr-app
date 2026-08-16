@@ -1,4 +1,4 @@
-# server.py - FastAPI Backend for Qwen3-ASR
+# server.py - Model Server for Qwen3-ASR
 import os
 import sys
 import json
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Qwen3-ASR API", lifespan=lifespan)
+app = FastAPI(title="Qwen3-ASR Model Server", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title Qwen3-ASR Backend API Server
+title Qwen3-ASR Model Server
 
 set "ROOT_DIR=%~dp0..\"
 set "WINDOWS_RUNTIME=%ROOT_DIR%windows_runtime"
@@ -91,7 +91,7 @@ echo Starting server, loading models...
 echo This may take a few minutes on first launch.
 echo.
 
-cd /d "%ROOT_DIR%backend"
+cd /d "%ROOT_DIR%model_server"
 "!PYTHON_EXE!" server.py --ip 127.0.0.1 --port 8000
 
 pause

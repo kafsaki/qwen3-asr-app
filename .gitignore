@@ -17,7 +17,7 @@ windows_runtime/python_path.txt
 
 # Node
 node_modules/
-frontend/uploads/
+server/uploads/
 package-lock.json
 
 # Outputs

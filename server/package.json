@@ -1,7 +1,7 @@
 {
-  "name": "qwen3-asr-frontend",
+  "name": "qwen3-asr-bff",
   "version": "1.0.0",
-  "description": "Qwen3-ASR Frontend Web UI",
+  "description": "Qwen3-ASR BFF Server (Web UI + API Proxy)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

@@ -92,7 +92,7 @@ async def transcribe(
     language: str = Form(default="自动识别"),
     diarize: bool = Form(default=True),
     max_chars: int = Form(default=20),
-    split_by_punc: bool = Form(default=True),
+    punc_pattern: str = Form(default=""),
     hotwords: str = Form(default=""),
 ):
     if not file:
@@ -113,7 +113,8 @@ async def transcribe(
         out_folder = os.path.join(OUTPUTS_DIR, f"{file_id}_single")
         os.makedirs(out_folder, exist_ok=True)
 
-        all_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc)
+        _punc = punc_pattern if punc_pattern else None
+        all_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, _punc)
         all_path = os.path.join(out_folder, "全角色.srt")
         with open(all_path, "w", encoding="utf-8") as f:
             f.write(all_srt)
@@ -122,7 +123,7 @@ async def transcribe(
         if diarize and sd and "text" in sd:
             speakers = sorted(list(set(str(seg[2]) for seg in sd["text"])))
             for spk in speakers:
-                spk_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc, target_spk=spk)
+                spk_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, _punc, target_spk=spk)
                 if spk_srt.strip():
                     with open(os.path.join(out_folder, f"角色_{spk}.srt"), "w", encoding="utf-8") as f:
                         f.write(spk_srt)
@@ -153,7 +154,7 @@ async def transcribe_batch(
     language: str = Form(default="自动识别"),
     diarize: bool = Form(default=True),
     max_chars: int = Form(default=20),
-    split_by_punc: bool = Form(default=True),
+    punc_pattern: str = Form(default=""),
     hotwords: str = Form(default=""),
 ):
     if not files:
@@ -164,6 +165,7 @@ async def transcribe_batch(
     os.makedirs(out_folder, exist_ok=True)
 
     loop = asyncio.get_event_loop()
+    _punc = punc_pattern if punc_pattern else None
     results = []
     for f in files:
         ext = os.path.splitext(f.filename or "audio.wav")[1] or ".wav"
@@ -180,14 +182,14 @@ async def transcribe_batch(
             single_folder = os.path.join(out_folder, f"{file_id}_single")
             os.makedirs(single_folder, exist_ok=True)
 
-            all_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc)
+            all_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, _punc)
             with open(os.path.join(single_folder, "全角色.srt"), "w", encoding="utf-8") as out_f:
                 out_f.write(all_srt)
 
             if diarize and sd and "text" in sd:
                 spks = sorted(list(set(str(seg[2]) for seg in sd["text"])))
                 for s in spks:
-                    s_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc, target_spk=s)
+                    s_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, _punc, target_spk=s)
                     if s_srt.strip():
                         with open(os.path.join(single_folder, f"角色_{s}.srt"), "w", encoding="utf-8") as out_f:
                             out_f.write(s_srt)
@@ -231,7 +233,7 @@ async def align(
         text, ts = await loop.run_in_executor(
             gpu_executor, _run_align, local_path, reference_text, language
         )
-        srt_content = ExportUtils.generate_srt_content(text, ts, sd_result=None, max_chars=40, split_by_punc=True)
+        srt_content = ExportUtils.generate_srt_content(text, ts, sd_result=None, max_chars=40)
 
         out_folder = os.path.join(OUTPUTS_DIR, f"{file_id}_align")
         os.makedirs(out_folder, exist_ok=True)

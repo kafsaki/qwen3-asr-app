@@ -61,14 +61,19 @@
             </label>
           </div>
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="singlePunc" checked>
-              <span>标点断句</span>
-            </label>
+            <label>断句标点</label>
+            <select id="singlePunc">
+              <option value="[。！？.!?]\s*$" selected>仅句末标点（。！？）</option>
+              <option value="[，。！？；：,.!?:;、]\s*$">全部标点（，。！？；：等）</option>
+              <option value="">不启用</option>
+              <option value="__custom__">自定义</option>
+            </select>
+            <input type="text" id="singlePuncCustom" placeholder="输入正则表达式，如 [。！？]\s*$" style="display:none;margin-top:8px;width:100%">
           </div>
           <div class="form-group">
             <label>单行字数: <span id="singleCharsVal">20</span></label>
             <input type="range" id="singleChars" min="5" max="100" value="20">
+            <p class="form-hint">字幕按内置标点（，。！？；：,.!?:;、）切分为 segment，单行字数基于 segment 累加</p>
           </div>
           <button class="btn-primary" id="singleBtn">开始转写</button>
         </div>
@@ -127,14 +132,19 @@
             </label>
           </div>
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" id="batchPunc" checked>
-              <span>标点断句</span>
-            </label>
+            <label>断句标点</label>
+            <select id="batchPunc">
+              <option value="[。！？.!?]\s*$" selected>仅句末标点（。！？）</option>
+              <option value="[，。！？；：,.!?:;、]\s*$">全部标点（，。！？；：等）</option>
+              <option value="">不启用</option>
+              <option value="__custom__">自定义</option>
+            </select>
+            <input type="text" id="batchPuncCustom" placeholder="输入正则表达式，如 [。！？]\s*$" style="display:none;margin-top:8px;width:100%">
           </div>
           <div class="form-group">
             <label>单行字数: <span id="batchCharsVal">20</span></label>
             <input type="range" id="batchChars" min="5" max="100" value="20">
+            <p class="form-hint">字幕按内置标点（，。！？；：,.!?:;、）切分为 segment，单行字数基于 segment 累加</p>
           </div>
           <button class="btn-primary" id="batchBtn">批量处理</button>
         </div>

@@ -6,8 +6,8 @@ class ExportUtils:
     @staticmethod
     def get_pure_len(text):
         if not text: return 0
-        # 统计核心字符：中文、字母、数字
-        return len(re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff]', '', text))
+        # 统计核心字符：中文、日文假名、韩文、字母、数字
+        return len(re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', '', text))
 
     @staticmethod
     def calculate_iou(s1, e1, s2, e2):
@@ -24,11 +24,11 @@ class ExportUtils:
         return f"{hours:02d}:{minutes:02d}:{seconds:02d},{millis:03d}"
 
     @staticmethod
-    def generate_srt_content(full_text, timestamps, sd_result=None, max_chars=20, split_by_punc=True, target_spk=None):
+    def generate_srt_content(full_text, timestamps, sd_result=None, max_chars=20, punc_pattern=None, target_spk=None):
         if not timestamps or not full_text: return ""
         
-        # 1. 语义切分：匹配非标点内容 + 后随的标点/空格
-        pattern = r'([^，。！？；：,.!?:; \n]+[，。！？；：,.!?:; \n]*)'
+        # 1. 语义切分：按内置标点切分为 segment（与断句设置无关）
+        pattern = r'([^，。！？；：,.!?:;、 \n]+[，。！？；：,.!?:;、 \n]*)'
         segments = re.findall(pattern, full_text)
         
         srt_lines, ts_idx, line_idx = [], 0, 1
@@ -54,12 +54,12 @@ class ExportUtils:
             if ts_idx > seg_start_ts_idx:
                 current_line_ts.extend(timestamps[seg_start_ts_idx:ts_idx])
 
-            # --- 核心修复点：断句逻辑判定 ---
-            # 1. 真正的标点断句（排除空格和换行）
-            is_punc_end = split_by_punc and re.search(r'[，。！？；：,.!?:;]\s*$', seg_text)
+            # --- 断句逻辑判定 ---
+            # 1. 用户选择的标点断句（正则匹配）
+            is_punc_end = punc_pattern and re.search(punc_pattern, seg_text)
             # 2. 强制换行符断句
             is_newline_end = '\n' in seg_text
-            # 3. 字符数量溢出断句
+            # 3. 字符数量溢出断句（segment 累加超过 max_chars）
             is_length_overflow = ExportUtils.get_pure_len(current_line_text) >= max_chars
 
             if is_punc_end or is_newline_end or is_length_overflow:

@@ -162,6 +162,26 @@ document.getElementById('batchChars').addEventListener('input', function() {
   document.getElementById('batchCharsVal').textContent = this.value;
 });
 
+// ── Punc Pattern Dropdown ──
+function setupPuncSelect(selectId, customId) {
+  const select = document.getElementById(selectId);
+  const custom = document.getElementById(customId);
+  select.addEventListener('change', () => {
+    custom.style.display = select.value === '__custom__' ? '' : 'none';
+  });
+}
+
+function getPuncPattern(selectId, customId) {
+  const select = document.getElementById(selectId);
+  if (select.value === '__custom__') {
+    return document.getElementById(customId).value;
+  }
+  return select.value;
+}
+
+setupPuncSelect('singlePunc', 'singlePuncCustom');
+setupPuncSelect('batchPunc', 'batchPuncCustom');
+
 // ── Single Transcribe ──
 document.getElementById('singleBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('singleFile');
@@ -184,7 +204,7 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
     form.append('language', document.getElementById('singleLang').value);
     form.append('diarize', document.getElementById('singleDiarize').checked);
     form.append('max_chars', document.getElementById('singleChars').value);
-    form.append('split_by_punc', document.getElementById('singlePunc').checked);
+    form.append('punc_pattern', getPuncPattern('singlePunc', 'singlePuncCustom'));
     form.append('hotwords', document.getElementById('singleHotwords').value);
 
     const resp = await fetch(API_BASE + '/api/transcribe', { method: 'POST', body: form });
@@ -242,7 +262,7 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
     form.append('language', document.getElementById('batchLang').value);
     form.append('diarize', document.getElementById('batchDiarize').checked);
     form.append('max_chars', document.getElementById('batchChars').value);
-    form.append('split_by_punc', document.getElementById('batchPunc').checked);
+    form.append('punc_pattern', getPuncPattern('batchPunc', 'batchPuncCustom'));
     form.append('hotwords', document.getElementById('batchHotwords').value);
 
     const resp = await fetch(API_BASE + '/api/transcribe/batch', { method: 'POST', body: form });

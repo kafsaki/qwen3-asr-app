@@ -1,12 +1,14 @@
-# server.py - Model Server for Qwen3-ASR
+# server.py - Unified Server for Qwen3-ASR
 import os
 import sys
 import json
 import uuid
 import socket
+import asyncio
 import torch
 import shutil
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -23,6 +25,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 OUTPUTS_DIR = os.path.join(PROJECT_ROOT, "outputs")
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
+STATIC_DIR = os.path.join(PROJECT_ROOT, "..", "server", "public")
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
@@ -31,6 +34,7 @@ SD_MODEL_PATH = os.path.join(MODELS_DIR, "speaker-diarization-community-1")
 # ── Global state ────────────────────────────────────────
 hub: ModelHub = None
 engine: TranscribeEngine = None
+gpu_executor = ThreadPoolExecutor(max_workers=1)
 
 
 def _parse_json_dict(s):
@@ -60,7 +64,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Qwen3-ASR Model Server", lifespan=lifespan)
+app = FastAPI(title="Qwen3-ASR Server", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -78,6 +82,10 @@ def status():
 
 
 # ── Single Transcribe ───────────────────────────────────
+def _run_transcribe(file_path, language, diarize, hotwords):
+    return engine.run(file_path, language, diarize, SD_MODEL_PATH, PROJECT_ROOT, hotwords)
+
+
 @app.post("/api/transcribe")
 async def transcribe(
     file: UploadFile = File(...),
@@ -97,7 +105,10 @@ async def transcribe(
         f.write(await file.read())
 
     try:
-        text, ts, sd = engine.run(local_path, language, diarize, SD_MODEL_PATH, PROJECT_ROOT, hotwords)
+        loop = asyncio.get_event_loop()
+        text, ts, sd = await loop.run_in_executor(
+            gpu_executor, _run_transcribe, local_path, language, diarize, hotwords
+        )
 
         out_folder = os.path.join(OUTPUTS_DIR, f"{file_id}_single")
         os.makedirs(out_folder, exist_ok=True)
@@ -152,16 +163,19 @@ async def transcribe_batch(
     out_folder = os.path.join(OUTPUTS_DIR, f"{batch_id}_batch")
     os.makedirs(out_folder, exist_ok=True)
 
+    loop = asyncio.get_event_loop()
     results = []
     for f in files:
         ext = os.path.splitext(f.filename or "audio.wav")[1] or ".wav"
-        file_id = uuid.uuid4().hex[:8]  # 唯一标识，关联前端文件与后端输出
+        file_id = uuid.uuid4().hex[:8]
         local_path = os.path.join(UPLOADS_DIR, f"batch_{batch_id}_{file_id}{ext}")
         with open(local_path, "wb") as fh:
             fh.write(await f.read())
 
         try:
-            text, ts, sd = engine.run(local_path, language, diarize, SD_MODEL_PATH, PROJECT_ROOT, hotwords)
+            text, ts, sd = await loop.run_in_executor(
+                gpu_executor, _run_transcribe, local_path, language, diarize, hotwords
+            )
 
             single_folder = os.path.join(out_folder, f"{file_id}_single")
             os.makedirs(single_folder, exist_ok=True)
@@ -193,6 +207,10 @@ async def transcribe_batch(
 
 
 # ── Align ───────────────────────────────────────────────
+def _run_align(file_path, reference_text, language):
+    return engine.align(file_path, reference_text, language)
+
+
 @app.post("/api/align")
 async def align(
     file: UploadFile = File(...),
@@ -209,7 +227,10 @@ async def align(
         f.write(await file.read())
 
     try:
-        text, ts = engine.align(local_path, reference_text, language)
+        loop = asyncio.get_event_loop()
+        text, ts = await loop.run_in_executor(
+            gpu_executor, _run_align, local_path, reference_text, language
+        )
         srt_content = ExportUtils.generate_srt_content(text, ts, sd_result=None, max_chars=40, split_by_punc=True)
 
         out_folder = os.path.join(OUTPUTS_DIR, f"{file_id}_align")
@@ -264,6 +285,16 @@ def download_single(batch_folder: str, single_zip: str):
     raise HTTPException(404, "File not found")
 
 
+# ── Static Files & SPA fallback ─────────────────────────
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve static files with SPA fallback to index.html"""
+    file_path = os.path.join(STATIC_DIR, full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+
 # ── Main ────────────────────────────────────────────────
 def _check_port(host, port):
     """Check if port is available. Returns True if available, False otherwise."""
@@ -287,5 +318,9 @@ if __name__ == "__main__":
 
     os.environ.setdefault("ASR_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ASR-0.6B"))
     os.environ.setdefault("ALIGNER_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ForcedAligner-0.6B"))
+
+    print(f"  Frontend: http://{args.ip}:{args.port}")
+    print(f"  API:      http://{args.ip}:{args.port}/api/")
+    print()
 
     uvicorn.run(app, host=args.ip, port=args.port)

@@ -13,36 +13,31 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      BFF Server (Express.js :3040)                     │
+│                   Qwen3-ASR Server (FastAPI/Uvicorn :8000)            │
 │                                                                     │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
-│  │ 单音频识别    │  │  批量处理     │  │  精准对齐     │              │
-│  │ file + params │  │ files[] + .. │  │ file + text  │              │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
-└─────────┼─────────────────┼─────────────────┼───────────────────────┘
-          │                 │                 │
-          ▼                 ▼                 ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                   Model Server (FastAPI :8000)                        │
-│                                                                     │
-│  POST /api/transcribe         POST /api/transcribe/batch            │
-│  ┌───────────────────┐        ┌────────────────────────┐           │
-│  │ engine.run()      │        │ for each file:         │           │
-│  │  → ASR 转写       │        │   engine.run()         │           │
-│  │  → 可选说话人分离  │        │   → zip 打包下载       │           │
-│  │  → SRT 字幕生成   │        └────────────────────────┘           │
-│  └───────────────────┘                                              │
-│                                                                     │
-│  POST /api/align                                                   │
-│  ┌──────────────────────────────────────────┐                      │
-│  │ engine.align()                            │                      │
-│  │  1. ASR 转写 → 参考文本 + 逐字时间戳       │                      │
-│  │  2. difflib 对齐用户文本 ↔ ASR 文本        │                      │
-│  │  3. 时间戳映射 → SRT 字幕                  │                      │
-│  └──────────────────────────────────────────┘                      │
-└────────────────────────────────┬────────────────────────────────────┘
-                                 │
-                                 ▼
+│  │ 静态文件服务   │  │  API 路由     │  │  GPU 推理     │              │
+│  │ HTML/CSS/JS  │  │ /api/*       │  │ 线程池隔离     │              │
+│  └──────────────┘  └──────┬───────┘  └──────────────┘              │
+│                           │                                         │
+│  ┌────────────────────────┼────────────────────────────────────┐   │
+│  │  POST /api/transcribe  │  POST /api/transcribe/batch        │   │
+│  │  ┌───────────────────┐ │  ┌────────────────────────┐        │   │
+│  │  │ engine.run()      │ │  │ for each file:         │        │   │
+│  │  │  → ASR 转写       │ │  │   engine.run()         │        │   │
+│  │  │  → 可选说话人分离  │ │  │   → zip 打包下载       │        │   │
+│  │  │  → SRT 字幕生成   │ │  └────────────────────────┘        │   │
+│  │  └───────────────────┘ │                                      │   │
+│  │  POST /api/align       │                                      │   │
+│  │  ┌───────────────────┐ │                                      │   │
+│  │  │ engine.align()    │ │                                      │   │
+│  │  │  → difflib 对齐   │ │                                      │   │
+│  │  │  → SRT 字幕       │ │                                      │   │
+│  │  └───────────────────┘ │                                      │   │
+│  └────────────────────────┼──────────────────────────────────────┘   │
+└───────────────────────────┬─────────────────────────────────────────┘
+                            │
+                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Model Pipeline                               │
 │                                                                     │
@@ -114,10 +109,9 @@
 
 | 服务 | 默认端口 | 自定义方式 |
 |------|---------|-----------|
-| BFF Server (Express.js) | **3040** | 设置环境变量 `PORT` 或启动时按提示输入 |
-| Model Server (FastAPI) | **8000** | 设置环境变量 `PORT` 或 `--port` 参数 |
+| Qwen3-ASR Server (FastAPI + Uvicorn) | **8000** | 设置环境变量 `PORT` 或启动时按提示输入 |
 
-启动脚本会自动检测默认端口是否可用，若被占用则提示输入自定义端口，并再次验证可用性。
+启动后同时提供前端页面和 API 接口，无需额外服务。端口被占用时提示输入自定义端口并验证可用性。
 
 ## 硬件需求
 
@@ -147,27 +141,16 @@
 ### 方式一：便携版 Python（推荐，无需手动配置环境）
 
 1. 从网盘下载 `WPy64-312101/` 并解压到 `model_server/windows_runtime/` 目录
-2. 安装 BFF 依赖：
+
+2. 运行 `model_server/windows_runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
+
+3. 启动：
 
 ```powershell
-cd server
-npm install
-cd ..
-```
-
-3. 运行 `model_server/windows_runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
-
-4. 启动：
-
-```powershell
-# 终端1 - 模型推理服务（启动后选择 [1] Portable Python）
 scripts\backend_start.bat
-
-# 终端2 - BFF 服务
-scripts\frontend_start.bat
 ```
 
-浏览器访问 `http://127.0.0.1:3040`
+启动后选择 [1] Portable Python，浏览器访问 `http://127.0.0.1:8000`
 
 ### 方式二：Conda 环境（自行构建）
 
@@ -194,25 +177,13 @@ pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 pip uninstall torchcodec -y
 ```
 
-### 3. 安装 BFF 依赖
+### 3. 启动
 
 ```powershell
-cd server
-npm install
-cd ..
-```
-
-### 4. 启动
-
-```powershell
-# 终端1 - 模型推理服务（启动后选择 [2] Conda，输入 python.exe 路径）
 scripts\backend_start.bat
-
-# 终端2 - BFF 服务
-scripts\frontend_start.bat
 ```
 
-浏览器访问 `http://127.0.0.1:3040`
+启动后选择 [2] Conda，输入 python.exe 路径，浏览器访问 `http://127.0.0.1:8000`
 
 ---
 
@@ -255,40 +226,27 @@ pip install qwen-asr pyannote.audio fastapi uvicorn python-multipart pyyaml
 pip uninstall torchcodec -y
 ```
 
-### 4. 安装 BFF 依赖
+### 4. 启动
 
 ```bash
-cd server
-npm install
-cd ..
-```
-
-### 5. 启动
-
-```bash
-# 终端1 - 模型推理服务
 conda activate qwen3-asr
 export HF_HUB_OFFLINE=1
 export ASR_CHECKPOINT="$PWD/model_server/models/Qwen/Qwen3-ASR-0.6B"
 export ALIGNER_CHECKPOINT="$PWD/model_server/models/Qwen/Qwen3-ForcedAligner-0.6B"
 cd model_server
 python server.py --ip 127.0.0.1 --port 8000
-
-# 终端2 - BFF 服务
-cd server
-npm start
 ```
 
-浏览器访问 `http://127.0.0.1:3040`
+浏览器访问 `http://127.0.0.1:8000`
 
 ---
 
 ## 目录结构
 
 ```
-├── model_server/            # 模型推理服务 (FastAPI)
-│   ├── server.py            # API 入口
-│   ├── transcribe_engine.py # 转写引擎
+├── model_server/            # 模型推理服务 (FastAPI + Uvicorn)
+│   ├── server.py            # 统一入口 (API + 静态文件服务)
+│   ├── transcribe_engine.py # 转写引擎 (GPU 推理线程池隔离)
 │   ├── model_hub.py         # 模型加载
 │   ├── audio_utils.py       # 音频处理 (ffmpeg)
 │   ├── export_utils.py      # SRT 字幕导出
@@ -301,13 +259,11 @@ npm start
 │   │   └── WPy64-312101/    # 便携版 Python 3.12 + 依赖
 │   ├── outputs/             # 转写结果输出
 │   └── uploads/             # 临时上传文件
-├── server/                  # BFF 服务 (Express.js)
-│   ├── server.js            # Web 服务器 + API 代理
-│   ├── public/              # 静态资源 (HTML/CSS/JS)
-│   └── package.json
+├── server/                  # 前端静态资源
+│   └── public/              # HTML/CSS/JS
 ├── scripts/                 # 启动脚本
-│   ├── backend_start.bat    # 模型推理服务启动脚本
-│   └── frontend_start.bat   # BFF 服务启动脚本
+│   ├── backend_start.bat    # 一键启动脚本
+│   └── frontend_start.bat   # (已废弃 - Express.js BFF 已移除)
 └── README.md
 ```
 

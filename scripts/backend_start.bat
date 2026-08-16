@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-title Qwen3-ASR Model Server
+title Qwen3-ASR Server
 
 set "ROOT_DIR=%~dp0..\"
 set "WINDOWS_RUNTIME=%ROOT_DIR%model_server\windows_runtime"

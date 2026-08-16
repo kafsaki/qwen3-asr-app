@@ -165,3 +165,49 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   vertical-align: middle; margin-right: 6px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Workspace ── */
+.ws-player-area {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0; overflow: hidden;
+}
+.ws-video-container {
+  position: relative; width: 100%; padding-bottom: 56.25%; /* 16:9 */
+  background: #000; border-bottom: 2px solid var(--border);
+}
+.ws-upload-overlay {
+  position: absolute; inset: 0; cursor: pointer;
+  border: 2px dashed var(--border); border-radius: var(--radius) var(--radius) 0 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s, background 0.2s; z-index: 2;
+}
+.ws-upload-overlay:hover { border-color: var(--primary); background: var(--surface-hover); }
+.ws-upload-overlay.drag-over { border-color: var(--primary); background: rgba(99,102,241,0.08); }
+.ws-upload-placeholder {
+  text-align: center; color: var(--text-muted);
+}
+.ws-player-wrapper {
+  position: absolute; inset: 0; z-index: 1;
+}
+.ws-player-wrapper video {
+  width: 100%; height: 100%; display: block; object-fit: contain;
+}
+
+/* Waveform */
+.ws-waveform-wrap {
+  position: relative; width: 100%; height: 80px; background: #0a0a12;
+  cursor: pointer; user-select: none;
+}
+.ws-waveform {
+  width: 100%; height: 100%; display: block;
+}
+.ws-waveform-progress {
+  position: absolute; top: 0; left: 0; height: 100%;
+  background: rgba(99, 102, 241, 0.25); pointer-events: none;
+  border-right: 2px solid var(--primary);
+}
+
+/* Form hint */
+.form-hint {
+  font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;
+}

@@ -7,6 +7,7 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('singleSrt').textContent = '';
   document.getElementById('batchSrt').textContent = '';
   document.getElementById('alignSrt').textContent = '';
+  document.getElementById('wsSrt').textContent = '';
 });
 
 // ── Tab Switching ──
@@ -409,3 +410,205 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     btn.textContent = '开始对齐';
   }
 });
+
+// ── Workspace ──
+(function() {
+  const wsInput = document.getElementById('wsFile');
+  const wsOverlay = document.getElementById('wsUploadOverlay');
+  const wsPlaceholder = document.getElementById('wsPlaceholder');
+  const wsPlayerWrapper = document.getElementById('wsPlayerWrapper');
+  const wsVideo = document.getElementById('wsVideo');
+  const wsWaveformWrap = document.getElementById('wsWaveformWrap');
+  const wsCanvas = document.getElementById('wsWaveform');
+  const wsProgress = document.getElementById('wsWaveformProgress');
+  const wsCtx = wsCanvas.getContext('2d');
+
+  let wsAudioUrl = null;
+  let wsFileId = null;
+  let wsAudioBuffer = null;
+  let wsPeaks = [];
+  let wsDragging = false;
+
+  wsInput.value = '';
+
+  // Init canvas size & empty waveform
+  function initCanvas() {
+    wsCanvas.width = wsCanvas.parentElement.clientWidth;
+    wsCanvas.height = 80;
+    wsPeaks = [];
+    if (wsCanvas.width > 0) drawEmptyWaveform();
+  }
+  initCanvas();
+
+  function drawEmptyWaveform() {
+    const w = wsCanvas.width, h = wsCanvas.height, mid = h / 2;
+    wsCtx.clearRect(0, 0, w, h);
+    wsCtx.strokeStyle = '#3a3a55';
+    wsCtx.lineWidth = 1;
+    wsCtx.beginPath();
+    wsCtx.moveTo(0, mid);
+    wsCtx.lineTo(w, mid);
+    wsCtx.stroke();
+  }
+
+  // Drag & drop
+  wsOverlay.addEventListener('click', () => wsInput.click());
+  wsOverlay.addEventListener('dragover', (e) => { e.preventDefault(); wsOverlay.classList.add('drag-over'); });
+  wsOverlay.addEventListener('dragleave', () => { wsOverlay.classList.remove('drag-over'); });
+  wsOverlay.addEventListener('drop', (e) => {
+    e.preventDefault();
+    wsOverlay.classList.remove('drag-over');
+    wsInput.files = e.dataTransfer.files;
+    handleWsFile();
+  });
+  wsInput.addEventListener('change', handleWsFile);
+
+  async function handleWsFile() {
+    if (!wsInput.files.length) return;
+    const file = wsInput.files[0];
+    document.getElementById('wsStatus').textContent = '正在提取音频...';
+
+    const form = new FormData();
+    form.append('file', file);
+    const resp = await fetch('/api/workspace/upload', { method: 'POST', body: form });
+    const data = await resp.json();
+    if (data.status !== 'success') {
+      document.getElementById('wsStatus').textContent = '上传失败';
+      return;
+    }
+
+    wsFileId = data.file_id;
+    wsAudioUrl = data.audio_url;
+
+    // Load video
+    wsVideo.src = data.video_url;
+    wsOverlay.style.display = 'none';
+    wsPlayerWrapper.style.display = '';
+
+    // Load audio & draw waveform
+    await loadWaveform(data.audio_url);
+    document.getElementById('wsStatus').textContent = '视频已就绪，可开始转写';
+  }
+
+  async function loadWaveform(url) {
+    const resp = await fetch(url);
+    const arrayBuffer = await resp.arrayBuffer();
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    wsAudioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    const raw = wsAudioBuffer.getChannelData(0);
+    audioCtx.close();
+
+    // Downsample to ~1 peak per pixel
+    const width = wsCanvas.parentElement.clientWidth;
+    wsCanvas.width = width;
+    wsCanvas.height = 80;
+    const step = Math.floor(raw.length / width) || 1;
+    wsPeaks = [];
+    for (let i = 0; i < width; i++) {
+      let max = 0;
+      for (let j = 0; j < step; j++) {
+        const v = Math.abs(raw[i * step + j] || 0);
+        if (v > max) max = v;
+      }
+      wsPeaks.push(max);
+    }
+    drawWaveform();
+  }
+
+  function drawWaveform(progress) {
+    const w = wsCanvas.width, h = wsCanvas.height, mid = h / 2;
+    wsCtx.clearRect(0, 0, w, h);
+    for (let i = 0; i < wsPeaks.length; i++) {
+      const barH = wsPeaks[i] * mid * 0.9;
+      if (progress != null && i / wsPeaks.length > progress) {
+        wsCtx.fillStyle = '#3a3a55';
+      } else {
+        wsCtx.fillStyle = '#6366f1';
+      }
+      wsCtx.fillRect(i, mid - barH, 1, barH * 2);
+    }
+  }
+
+  // Video timeupdate → waveform progress
+  wsVideo.addEventListener('timeupdate', () => {
+    if (!wsVideo.duration) return;
+    const pct = wsVideo.currentTime / wsVideo.duration;
+    wsProgress.style.width = (pct * 100) + '%';
+    drawWaveform(pct);
+  });
+
+  // Waveform click → seek video
+  wsWaveformWrap.addEventListener('mousedown', (e) => {
+    wsDragging = true;
+    seekWaveform(e);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (wsDragging) seekWaveform(e);
+  });
+  document.addEventListener('mouseup', () => { wsDragging = false; });
+
+  function seekWaveform(e) {
+    if (!wsVideo.duration) return;
+    const rect = wsCanvas.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    wsVideo.currentTime = x * wsVideo.duration;
+  }
+
+  // Punc
+  setupPuncSelect('wsPunc', 'wsPuncCustom');
+  document.getElementById('wsChars').addEventListener('input', function() {
+    document.getElementById('wsCharsVal').textContent = this.value;
+  });
+
+  // Transcribe
+  document.getElementById('wsBtn').addEventListener('click', async () => {
+    if (!wsAudioUrl) {
+      document.getElementById('wsStatus').textContent = '请先上传视频文件';
+      return;
+    }
+
+    const btn = document.getElementById('wsBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>处理中...';
+    document.getElementById('wsStatus').innerHTML = '<span class="spinner"></span>正在转写...';
+    document.getElementById('wsText').value = '';
+    document.getElementById('wsSrt').textContent = '';
+    document.getElementById('wsDownloadArea').style.display = 'none';
+
+    try {
+      // Fetch extracted audio blob
+      const audioResp = await fetch(wsAudioUrl);
+      const audioBlob = await audioResp.blob();
+
+      const form = new FormData();
+      form.append('file', audioBlob, 'audio.wav');
+      form.append('language', document.getElementById('wsLang').value);
+      form.append('diarize', document.getElementById('wsDiarize').checked);
+      form.append('max_chars', document.getElementById('wsChars').value);
+      form.append('punc_pattern', getPuncPattern('wsPunc', 'wsPuncCustom'));
+      form.append('hotwords', document.getElementById('wsHotwords').value);
+
+      const resp = await fetch('/api/transcribe', { method: 'POST', body: form });
+      const data = await resp.json();
+
+      if (data.status === 'success') {
+        document.getElementById('wsStatus').textContent = '转写完成';
+        document.getElementById('wsText').value = data.full_text || '';
+        document.getElementById('wsSrt').textContent = data.srt_content || '';
+        if (data.output_folder && wsFileId) {
+          document.getElementById('wsDownloadArea').style.display = '';
+          document.getElementById('wsDownloadBtn').onclick = () => {
+            window.open('/api/download/' + data.output_folder, '_blank');
+          };
+        }
+      } else {
+        document.getElementById('wsStatus').textContent = '错误: ' + (data.error || data.detail || '未知错误');
+      }
+    } catch (err) {
+      document.getElementById('wsStatus').textContent = '请求失败: ' + err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '开始转写';
+    }
+  });
+})();

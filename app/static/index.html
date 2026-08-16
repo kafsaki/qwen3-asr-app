@@ -21,6 +21,7 @@
       <button class="tab-btn active" data-tab="single">单音频识别</button>
       <button class="tab-btn" data-tab="batch">批量识别</button>
       <button class="tab-btn" data-tab="align">精准对齐</button>
+      <button class="tab-btn" data-tab="workspace">工作台</button>
     </div>
 
     <!-- ── Single Tab ── -->
@@ -224,6 +225,88 @@
           </div>
           <div class="form-group" id="alignDownloadArea" style="display:none">
             <button class="btn-success" id="alignDownloadBtn">下载结果 (SRT)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Workspace Tab ── -->
+    <section id="tab-workspace" class="tab-content">
+      <!-- 播放器区域 -->
+      <div class="ws-player-area">
+        <div class="ws-video-container">
+          <input type="file" id="wsFile" accept="video/*" hidden>
+          <div class="ws-upload-overlay" id="wsUploadOverlay">
+            <div class="ws-upload-placeholder" id="wsPlaceholder">
+              <span class="upload-icon">+</span>
+              <span>点击或拖拽上传视频文件</span>
+            </div>
+          </div>
+          <div class="ws-player-wrapper" id="wsPlayerWrapper" style="display:none">
+            <video id="wsVideo" controls playsinline></video>
+          </div>
+        </div>
+        <!-- 波形图 -->
+        <div class="ws-waveform-wrap" id="wsWaveformWrap">
+          <canvas id="wsWaveform" class="ws-waveform"></canvas>
+          <div class="ws-waveform-progress" id="wsWaveformProgress"></div>
+        </div>
+      </div>
+
+      <!-- 转写参数 & 结果 -->
+      <div class="panel" style="margin-top:20px">
+        <div class="panel-left">
+          <div class="form-group">
+            <label>语种</label>
+            <select id="wsLang">
+              <option value="自动识别">自动识别</option>
+              <option value="Chinese">Chinese</option>
+              <option value="English">English</option>
+              <option value="Cantonese">Cantonese</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>热词提示</label>
+            <input type="text" id="wsHotwords" placeholder="输入专业术语，逗号分隔">
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="wsDiarize" checked>
+              <span>开启角色识别</span>
+            </label>
+          </div>
+          <div class="form-group">
+            <label>断句标点</label>
+            <select id="wsPunc">
+              <option value="[。！？.!?]\s*$" selected>仅句末标点（。！？）</option>
+              <option value="[，。！？；：,.!?:;、]\s*$">全部标点（，。！？；：等）</option>
+              <option value="">不启用</option>
+              <option value="__custom__">自定义</option>
+            </select>
+            <input type="text" id="wsPuncCustom" placeholder="输入正则表达式，如 [。！？]\s*$" style="display:none;margin-top:8px;width:100%">
+          </div>
+          <div class="form-group">
+            <label>单行字数: <span id="wsCharsVal">20</span></label>
+            <input type="range" id="wsChars" min="5" max="100" value="20">
+            <p class="form-hint">字幕按内置标点（，。！？；：,.!?:;、）切分为 segment，单行字数基于 segment 累加</p>
+          </div>
+          <button class="btn-primary" id="wsBtn">开始转写</button>
+        </div>
+        <div class="panel-right">
+          <div class="form-group">
+            <label>状态</label>
+            <div class="status-box" id="wsStatus">等待上传视频...</div>
+          </div>
+          <div class="form-group">
+            <label>完整文本</label>
+            <textarea id="wsText" rows="6" readonly placeholder="识别结果将显示在这里..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>SRT 预览</label>
+            <div class="srt-preview" id="wsSrt"></div>
+          </div>
+          <div class="form-group" id="wsDownloadArea" style="display:none">
+            <button class="btn-success" id="wsDownloadBtn">下载结果 (ZIP)</button>
           </div>
         </div>
       </div>

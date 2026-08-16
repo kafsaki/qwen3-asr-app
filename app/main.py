@@ -5,6 +5,7 @@ import json
 import uuid
 import socket
 import asyncio
+import subprocess
 import torch
 import shutil
 import argparse
@@ -285,6 +286,49 @@ def download_single(batch_folder: str, single_zip: str):
     if os.path.exists(file_path):
         return FileResponse(file_path, filename=single_zip, media_type="application/zip")
     raise HTTPException(404, "File not found")
+
+
+# ── Workspace ────────────────────────────────────────────
+@app.post("/api/workspace/upload")
+async def workspace_upload(file: UploadFile = File(...)):
+    if not file:
+        raise HTTPException(400, "No file uploaded")
+
+    file_id = uuid.uuid4().hex[:8]
+    ext = os.path.splitext(file.filename or "video.mp4")[1] or ".mp4"
+    video_path = os.path.join(UPLOADS_DIR, f"ws_video_{file_id}{ext}")
+    audio_path = os.path.join(UPLOADS_DIR, f"ws_audio_{file_id}.wav")
+
+    with open(video_path, "wb") as f:
+        f.write(await file.read())
+
+    # Extract audio from video using ffmpeg
+    cmd = ["ffmpeg", "-y", "-i", video_path, "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", audio_path]
+    proc = await asyncio.create_subprocess_exec(*cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    await proc.wait()
+
+    return {
+        "status": "success",
+        "file_id": file_id,
+        "video_url": f"/api/workspace/video/{file_id}{ext}",
+        "audio_url": f"/api/workspace/audio/{file_id}.wav",
+    }
+
+
+@app.get("/api/workspace/video/{filename:path}")
+def serve_workspace_video(filename: str):
+    video_path = os.path.join(UPLOADS_DIR, f"ws_video_{filename}")
+    if os.path.exists(video_path):
+        return FileResponse(video_path, media_type="video/mp4")
+    raise HTTPException(404, "Video not found")
+
+
+@app.get("/api/workspace/audio/{filename:path}")
+def serve_workspace_audio(filename: str):
+    audio_path = os.path.join(UPLOADS_DIR, f"ws_audio_{filename}")
+    if os.path.exists(audio_path):
+        return FileResponse(audio_path, media_type="audio/wav")
+    raise HTTPException(404, "Audio not found")
 
 
 # ── Static Files & SPA fallback ─────────────────────────

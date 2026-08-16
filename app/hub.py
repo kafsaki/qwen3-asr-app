@@ -1,4 +1,4 @@
-# model_hub.py
+# hub.py
 import os
 import torch
 import yaml

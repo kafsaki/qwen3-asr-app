@@ -5,19 +5,19 @@ __pycache__/
 *.egg
 
 # Runtime (download separately)
-model_server/models/*
-!model_server/models/.gitkeep
-model_server/windows_runtime/bin/*
-!model_server/windows_runtime/bin/.gitkeep
-model_server/windows_runtime/VC运行库/*
-!model_server/windows_runtime/VC运行库/.gitkeep
-model_server/windows_runtime/WPy64-312101/*
-!model_server/windows_runtime/WPy64-312101/.gitkeep
-model_server/windows_runtime/python_path.txt
-model_server/outputs/*
-!model_server/outputs/.gitkeep
-model_server/uploads/*
-!model_server/uploads/.gitkeep
+app/models/*
+!app/models/.gitkeep
+app/runtime/bin/*
+!app/runtime/bin/.gitkeep
+app/runtime/VC运行库/*
+!app/runtime/VC运行库/.gitkeep
+app/runtime/WPy64-312101/*
+!app/runtime/WPy64-312101/.gitkeep
+app/runtime/python_path.txt
+app/outputs/*
+!app/outputs/.gitkeep
+app/uploads/*
+!app/uploads/.gitkeep
 
 # Node
 node_modules/

@@ -123,14 +123,14 @@
 
 ## 下载模型文件
 
-> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录的 `model_server/` 下：
+> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录的 `app/` 下：
 
 | 目录 | 说明 | 大小 |
 |------|------|------|
-| `model_server/models/` | ASR 模型 + 说话人分离模型 | ~2GB |
-| `model_server/windows_runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
-| `model_server/windows_runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
-| `model_server/windows_runtime/WPy64-312101/` | 便携版 Python 3.12 + 依赖（仅 Windows 需要） | ~3GB |
+| `app/models/` | ASR 模型 + 说话人分离模型 | ~2GB |
+| `app/runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
+| `app/runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
+| `app/runtime/WPy64-312101/` | 便携版 Python 3.12 + 依赖（仅 Windows 需要） | ~3GB |
 
 > 网盘链接：[待补充]
 
@@ -140,14 +140,14 @@
 
 ### 方式一：便携版 Python（推荐，无需手动配置环境）
 
-1. 从网盘下载 `WPy64-312101/` 并解压到 `model_server/windows_runtime/` 目录
+1. 从网盘下载 `WPy64-312101/` 并解压到 `app/runtime/` 目录
 
-2. 运行 `model_server/windows_runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
+2. 运行 `app/runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
 
 3. 启动：
 
 ```powershell
-scripts\backend_start.bat
+scripts\start.bat
 ```
 
 启动后选择 [1] Portable Python，浏览器访问 `http://127.0.0.1:8000`
@@ -180,7 +180,7 @@ pip uninstall torchcodec -y
 ### 3. 启动
 
 ```powershell
-scripts\backend_start.bat
+scripts\start.bat
 ```
 
 启动后选择 [2] Conda，输入 python.exe 路径，浏览器访问 `http://127.0.0.1:8000`
@@ -231,10 +231,10 @@ pip uninstall torchcodec -y
 ```bash
 conda activate qwen3-asr
 export HF_HUB_OFFLINE=1
-export ASR_CHECKPOINT="$PWD/model_server/models/Qwen/Qwen3-ASR-0.6B"
-export ALIGNER_CHECKPOINT="$PWD/model_server/models/Qwen/Qwen3-ForcedAligner-0.6B"
-cd model_server
-python server.py --ip 127.0.0.1 --port 8000
+export ASR_CHECKPOINT="$PWD/app/models/Qwen/Qwen3-ASR-0.6B"
+export ALIGNER_CHECKPOINT="$PWD/app/models/Qwen/Qwen3-ForcedAligner-0.6B"
+cd app
+python main.py --ip 127.0.0.1 --port 8000
 ```
 
 浏览器访问 `http://127.0.0.1:8000`
@@ -244,26 +244,24 @@ python server.py --ip 127.0.0.1 --port 8000
 ## 目录结构
 
 ```
-├── model_server/            # 模型推理服务 (FastAPI + Uvicorn)
-│   ├── server.py            # 统一入口 (API + 静态文件服务)
-│   ├── transcribe_engine.py # 转写引擎 (GPU 推理线程池隔离)
-│   ├── model_hub.py         # 模型加载
-│   ├── audio_utils.py       # 音频处理 (ffmpeg)
-│   ├── export_utils.py      # SRT 字幕导出
+├── app/                     # 应用主目录
+│   ├── main.py              # 统一入口 (API + 静态文件服务)
+│   ├── engine.py            # 转写引擎 (GPU 推理线程池隔离)
+│   ├── hub.py               # 模型加载
+│   ├── audio.py             # 音频处理 (ffmpeg)
+│   ├── export.py            # SRT 字幕导出
+│   ├── static/              # 前端静态资源 (HTML/CSS/JS)
 │   ├── models/              # 模型文件 (需从网盘下载)
 │   │   ├── Qwen/            # Qwen3-ASR 模型
 │   │   └── speaker-diarization-community-1/  # 说话人分离模型
-│   ├── windows_runtime/     # Windows 运行环境 (需从网盘下载)
+│   ├── runtime/             # Windows 运行环境 (需从网盘下载)
 │   │   ├── bin/             # ffmpeg 二进制
 │   │   ├── VC运行库/        # VC++ 运行库
 │   │   └── WPy64-312101/    # 便携版 Python 3.12 + 依赖
 │   ├── outputs/             # 转写结果输出
 │   └── uploads/             # 临时上传文件
-├── server/                  # 前端静态资源
-│   └── public/              # HTML/CSS/JS
 ├── scripts/                 # 启动脚本
-│   ├── backend_start.bat    # 一键启动脚本
-│   └── frontend_start.bat   # (已废弃 - Express.js BFF 已移除)
+│   └── start.bat            # 一键启动脚本
 └── README.md
 ```
 

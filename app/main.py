@@ -1,4 +1,4 @@
-# server.py - Unified Server for Qwen3-ASR
+# main.py - Unified Server for Qwen3-ASR
 import os
 import sys
 import json
@@ -16,16 +16,16 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from model_hub import ModelHub
-from transcribe_engine import TranscribeEngine
-from export_utils import ExportUtils
+from hub import ModelHub
+from engine import TranscribeEngine
+from export import ExportUtils
 
 # ── Config ──────────────────────────────────────────────
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 OUTPUTS_DIR = os.path.join(PROJECT_ROOT, "outputs")
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")
-STATIC_DIR = os.path.join(PROJECT_ROOT, "..", "server", "public")
+STATIC_DIR = os.path.join(PROJECT_ROOT, "static")
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 

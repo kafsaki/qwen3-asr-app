@@ -1,11 +1,11 @@
-# transcribe_engine.py
+# engine.py
 import os
 import time
 import torch
 import torchaudio
 import re
 import difflib
-from audio_utils import AudioUtils
+from audio import AudioUtils
 
 class TranscribeEngine:
     def __init__(self, hub):

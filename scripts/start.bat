@@ -3,8 +3,8 @@ setlocal enabledelayedexpansion
 title Qwen3-ASR Server
 
 set "ROOT_DIR=%~dp0..\"
-set "WINDOWS_RUNTIME=%ROOT_DIR%model_server\windows_runtime"
-set "MODELS=%ROOT_DIR%model_server\models"
+set "WINDOWS_RUNTIME=%ROOT_DIR%app\runtime"
+set "MODELS=%ROOT_DIR%app\models"
 set "PATH=%WINDOWS_RUNTIME%\bin;%PATH%"
 
 :: --- Python Environment Selection ---
@@ -133,7 +133,7 @@ echo Starting server, loading models...
 echo This may take a few minutes on first launch.
 echo.
 
-cd /d "%ROOT_DIR%model_server"
-"!PYTHON_EXE!" server.py --ip 127.0.0.1 --port !PORT!
+cd /d "%ROOT_DIR%app"
+"!PYTHON_EXE!" main.py --ip 127.0.0.1 --port !PORT!
 
 pause

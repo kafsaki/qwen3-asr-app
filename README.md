@@ -120,14 +120,14 @@
 
 ## 下载模型文件
 
-> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录：
+> 以下大文件未包含在 Git 仓库中，请从网盘下载后解压到项目根目录的 `model_server/` 下：
 
 | 目录 | 说明 | 大小 |
 |------|------|------|
-| `models/` | ASR 模型 + 说话人分离模型 | ~2GB |
-| `windows_runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
-| `windows_runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
-| `windows_runtime/WPy64-312101/` | 便携版 Python 3.12 + 依赖（仅 Windows 需要） | ~3GB |
+| `model_server/models/` | ASR 模型 + 说话人分离模型 | ~2GB |
+| `model_server/windows_runtime/bin/` | ffmpeg / ffprobe / ffplay（仅 Windows 需要） | ~630MB |
+| `model_server/windows_runtime/VC运行库/` | VC++ Redistributable（仅 Windows 需要） | ~25MB |
+| `model_server/windows_runtime/WPy64-312101/` | 便携版 Python 3.12 + 依赖（仅 Windows 需要） | ~3GB |
 
 > 网盘链接：[待补充]
 
@@ -137,7 +137,7 @@
 
 ### 方式一：便携版 Python（推荐，无需手动配置环境）
 
-1. 从网盘下载 `WPy64-312101/` 并解压到 `windows_runtime/` 目录
+1. 从网盘下载 `WPy64-312101/` 并解压到 `model_server/windows_runtime/` 目录
 2. 安装 BFF 依赖：
 
 ```powershell
@@ -146,16 +146,16 @@ npm install
 cd ..
 ```
 
-3. 运行 `windows_runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
+3. 运行 `model_server/windows_runtime/VC运行库/VC_redist.x64.exe` 安装 VC++ 运行库（如已安装可跳过）
 
 4. 启动：
 
 ```powershell
 # 终端1 - 模型推理服务（启动后选择 [1] Portable Python）
-windows_runtime\backend_start.bat
+scripts\backend_start.bat
 
 # 终端2 - BFF 服务
-windows_runtime\frontend_start.bat
+scripts\frontend_start.bat
 ```
 
 浏览器访问 `http://127.0.0.1:3000`
@@ -197,10 +197,10 @@ cd ..
 
 ```powershell
 # 终端1 - 模型推理服务（启动后选择 [2] Conda，输入 python.exe 路径）
-windows_runtime\backend_start.bat
+scripts\backend_start.bat
 
 # 终端2 - BFF 服务
-windows_runtime\frontend_start.bat
+scripts\frontend_start.bat
 ```
 
 浏览器访问 `http://127.0.0.1:3000`
@@ -260,8 +260,8 @@ cd ..
 # 终端1 - 模型推理服务
 conda activate qwen3-asr
 export HF_HUB_OFFLINE=1
-export ASR_CHECKPOINT="$PWD/models/Qwen/Qwen3-ASR-0.6B"
-export ALIGNER_CHECKPOINT="$PWD/models/Qwen/Qwen3-ForcedAligner-0.6B"
+export ASR_CHECKPOINT="$PWD/model_server/models/Qwen/Qwen3-ASR-0.6B"
+export ALIGNER_CHECKPOINT="$PWD/model_server/models/Qwen/Qwen3-ForcedAligner-0.6B"
 cd model_server
 python server.py --ip 127.0.0.1 --port 8000
 
@@ -282,22 +282,23 @@ npm start
 │   ├── transcribe_engine.py # 转写引擎
 │   ├── model_hub.py         # 模型加载
 │   ├── audio_utils.py       # 音频处理 (ffmpeg)
-│   └── export_utils.py      # SRT 字幕导出
+│   ├── export_utils.py      # SRT 字幕导出
+│   ├── models/              # 模型文件 (需从网盘下载)
+│   │   ├── Qwen/            # Qwen3-ASR 模型
+│   │   └── speaker-diarization-community-1/  # 说话人分离模型
+│   ├── windows_runtime/     # Windows 运行环境 (需从网盘下载)
+│   │   ├── bin/             # ffmpeg 二进制
+│   │   ├── VC运行库/        # VC++ 运行库
+│   │   └── WPy64-312101/    # 便携版 Python 3.12 + 依赖
+│   ├── outputs/             # 转写结果输出
+│   └── uploads/             # 临时上传文件
 ├── server/                  # BFF 服务 (Express.js)
 │   ├── server.js            # Web 服务器 + API 代理
 │   ├── public/              # 静态资源 (HTML/CSS/JS)
 │   └── package.json
-├── models/                  # 模型文件 (需从网盘下载)
-│   ├── Qwen/                # Qwen3-ASR 模型
-│   └── speaker-diarization-community-1/  # 说话人分离模型
-├── windows_runtime/         # Windows 运行环境 (需从网盘下载)
-│   ├── bin/                 # ffmpeg 二进制
-│   ├── VC运行库/            # VC++ 运行库
-│   ├── WPy64-312101/        # 便携版 Python 3.12 + 依赖
+├── scripts/                 # 启动脚本
 │   ├── backend_start.bat    # 模型推理服务启动脚本
 │   └── frontend_start.bat   # BFF 服务启动脚本
-├── outputs/                 # 转写结果输出
-├── uploads/                 # 临时上传文件
 └── README.md
 ```
 

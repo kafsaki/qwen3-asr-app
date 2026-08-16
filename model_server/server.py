@@ -18,7 +18,7 @@ from transcribe_engine import TranscribeEngine
 from export_utils import ExportUtils
 
 # ── Config ──────────────────────────────────────────────
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
 OUTPUTS_DIR = os.path.join(PROJECT_ROOT, "outputs")
 UPLOADS_DIR = os.path.join(PROJECT_ROOT, "uploads")

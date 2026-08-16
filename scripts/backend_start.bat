@@ -3,8 +3,8 @@ setlocal enabledelayedexpansion
 title Qwen3-ASR Model Server
 
 set "ROOT_DIR=%~dp0..\"
-set "WINDOWS_RUNTIME=%ROOT_DIR%windows_runtime"
-set "MODELS=%ROOT_DIR%models"
+set "WINDOWS_RUNTIME=%ROOT_DIR%model_server\windows_runtime"
+set "MODELS=%ROOT_DIR%model_server\models"
 set "PATH=%WINDOWS_RUNTIME%\bin;%PATH%"
 
 :: --- Python Environment Selection ---

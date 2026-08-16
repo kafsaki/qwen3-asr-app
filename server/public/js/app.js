@@ -41,6 +41,9 @@ function setupUpload(areaId, inputId, previewId, nameId, removeId) {
   const nameEl = document.getElementById(nameId);
   const removeBtn = document.getElementById(removeId);
 
+  // Clear stale browser state after page refresh
+  input.value = '';
+
   area.addEventListener('click', (e) => {
     if (e.target !== removeBtn) input.click();
   });
@@ -49,7 +52,14 @@ function setupUpload(areaId, inputId, previewId, nameId, removeId) {
   area.addEventListener('drop', (e) => {
     e.preventDefault();
     area.style.borderColor = '';
-    input.files = e.dataTransfer.files;
+    if (input.multiple) {
+      const dt = new DataTransfer();
+      for (const file of input.files) dt.items.add(file);
+      for (const file of e.dataTransfer.files) dt.items.add(file);
+      input.files = dt.files;
+    } else {
+      input.files = e.dataTransfer.files;
+    }
     updatePreview();
   });
   input.addEventListener('change', updatePreview);
@@ -73,8 +83,66 @@ function setupUpload(areaId, inputId, previewId, nameId, removeId) {
   });
 }
 
+// ── Batch Upload (individual file removal) ──
+function setupBatchUpload() {
+  const area = document.getElementById('batchUploadArea');
+  const input = document.getElementById('batchFiles');
+  const placeholder = document.getElementById('batchPlaceholder');
+  const fileList = document.getElementById('batchFileList');
+
+  input.value = '';
+
+  area.addEventListener('click', (e) => {
+    if (!e.target.closest('.btn-remove')) input.click();
+  });
+
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#6366f1'; });
+  area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
+
+  area.addEventListener('drop', (e) => {
+    e.preventDefault();
+    area.style.borderColor = '';
+    const dt = new DataTransfer();
+    for (const file of input.files) dt.items.add(file);
+    for (const file of e.dataTransfer.files) dt.items.add(file);
+    input.files = dt.files;
+    renderFileList();
+  });
+
+  input.addEventListener('change', renderFileList);
+
+  fileList.addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-remove')) {
+      const index = parseInt(e.target.dataset.index);
+      const dt = new DataTransfer();
+      Array.from(input.files).forEach((file, i) => {
+        if (i !== index) dt.items.add(file);
+      });
+      input.files = dt.files;
+      renderFileList();
+    }
+  });
+
+  function renderFileList() {
+    if (input.files.length > 0) {
+      placeholder.style.display = 'none';
+      fileList.style.display = '';
+      fileList.innerHTML = '';
+      Array.from(input.files).forEach((file, i) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.innerHTML = `<span class="file-name">${file.name}</span><button class="btn-remove" data-index="${i}">x</button>`;
+        fileList.appendChild(item);
+      });
+    } else {
+      placeholder.style.display = '';
+      fileList.style.display = 'none';
+    }
+  }
+}
+
 setupUpload('singleUploadArea', 'singleFile', 'singlePreview', 'singleFileName', 'singleRemoveBtn');
-setupUpload('batchUploadArea', 'batchFiles', 'batchPreview', 'batchFileCount', 'batchRemoveBtn');
+setupBatchUpload();
 setupUpload('alignUploadArea', 'alignFile', 'alignPreview', 'alignFileName', 'alignRemoveBtn');
 
 // ── Range Display ──

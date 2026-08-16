@@ -100,14 +100,11 @@
             <label>批量上传</label>
             <div class="upload-area" id="batchUploadArea">
               <input type="file" id="batchFiles" accept="audio/*" multiple hidden>
-              <div class="upload-placeholder">
+              <div class="upload-placeholder" id="batchPlaceholder">
                 <span class="upload-icon">+</span>
                 <span>点击或拖拽上传多个音频文件</span>
               </div>
-              <div class="upload-preview" id="batchPreview" style="display:none">
-                <span class="file-name" id="batchFileCount"></span>
-                <button class="btn-remove" id="batchRemoveBtn">x</button>
-              </div>
+              <div class="file-list" id="batchFileList" style="display:none"></div>
             </div>
           </div>
           <div class="form-group">

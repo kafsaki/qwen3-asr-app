@@ -1,6 +1,14 @@
 // app.js - Qwen3-ASR Frontend Logic
 const API_BASE = '';
 
+// 页面刷新时清空浏览器可能恢复的表单内容
+window.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('textarea').forEach(t => t.value = '');
+  document.getElementById('singleSrt').textContent = '';
+  document.getElementById('batchSrt').textContent = '';
+  document.getElementById('alignSrt').textContent = '';
+});
+
 // ── Tab Switching ──
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -242,16 +250,12 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
 
     document.getElementById('batchStatus').textContent = data.status === 'completed' ? '全部完成' : '处理完成';
 
-    // 检测同名文件
-    const nameCount = {};
-    data.results.forEach(r => { nameCount[r.filename] = (nameCount[r.filename] || 0) + 1; });
-    const hasDuplicates = Object.values(nameCount).some(c => c > 1);
-
-    const logLines = data.results.map(r => {
+    const logLines = data.results.map((r, i) => {
+      const fname = fileInput.files[i] ? fileInput.files[i].name : r.filename;
       if (r.status === 'success') {
-        return hasDuplicates ? `[OK] ${r.filename} (${r.file_id})` : `[OK] ${r.filename}`;
+        return `[OK] ${fname} (${r.file_id})`;
       }
-      return `[FAIL] ${r.filename}: ${r.error}`;
+      return `[FAIL] ${fname}: ${r.error}`;
     });
     document.getElementById('batchLog').textContent = logLines.join('\n');
 
@@ -263,9 +267,10 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
       select.innerHTML = '<option value="">-</option>';
       const resultMap = {};
 
-      data.results.forEach(r => {
+      data.results.forEach((r, i) => {
         if (r.status === 'success' && r.file_id) {
-          const label = hasDuplicates ? `${r.filename} (${r.file_id})` : r.filename;
+          const fname = fileInput.files[i] ? fileInput.files[i].name : r.filename;
+          const label = `${fname} (${r.file_id})`;
           const opt = document.createElement('option');
           opt.value = r.file_id;
           opt.textContent = label;
@@ -295,13 +300,12 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
       // 单独下载按钮（仅下载，不切换预览）
       const singleDiv = document.getElementById('batchSingleDownloads');
       singleDiv.innerHTML = '';
-      data.results.forEach(r => {
+      data.results.forEach((r, i) => {
         if (r.status === 'success' && r.file_id) {
+          const fname = fileInput.files[i] ? fileInput.files[i].name : r.filename;
           const btn = document.createElement('button');
           btn.className = 'btn-download';
-          btn.textContent = hasDuplicates
-            ? `⬇ ${r.filename} (${r.file_id})`
-            : `⬇ ${r.filename}`;
+          btn.textContent = `⬇ ${fname} (${r.file_id})`;
           btn.onclick = () => {
             window.open(API_BASE + '/api/download/' + data.output_folder + '/' + r.file_id + '_single.zip', '_blank');
           };
@@ -313,13 +317,14 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
         window.open(API_BASE + '/api/download/' + data.output_folder, '_blank');
       };
 
-      // 用后端UUID更新上传列表中的同名文件
-      if (hasDuplicates) {
+      // 用后端UUID更新上传列表
+      {
         const items = document.getElementById('batchFileList').querySelectorAll('.file-item');
         data.results.forEach((r, i) => {
           if (r.status === 'success' && r.file_id && items[i]) {
+            const fname = fileInput.files[i] ? fileInput.files[i].name : r.filename;
             const nameSpan = items[i].querySelector('.file-name');
-            nameSpan.innerHTML = `${r.filename} <span class="file-id">(${r.file_id})</span>`;
+            nameSpan.innerHTML = `${fname} <span class="file-id">(${r.file_id})</span>`;
           }
         });
       }

@@ -440,6 +440,24 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
   }
   initCanvas();
 
+  // Sync SRT sidebar height to match video + waveform
+  function syncSrtHeight() {
+    const left = document.querySelector('.ws-player-left');
+    const srtSegments = document.getElementById('wsSrt');
+    if (!left || !srtSegments) return;
+    const leftHeight = left.clientHeight;
+    if (leftHeight > 0) {
+      srtSegments.style.maxHeight = leftHeight + 'px';
+    }
+  }
+  syncSrtHeight();
+  window.addEventListener('resize', syncSrtHeight);
+  // Re-sync when workspace tab becomes visible
+  const wsTabBtn = document.querySelector('[data-tab="workspace"]');
+  if (wsTabBtn) {
+    wsTabBtn.addEventListener('click', () => setTimeout(syncSrtHeight, 50));
+  }
+
   function drawEmptyWaveform() {
     const w = wsCanvas.width, h = wsCanvas.height, mid = h / 2;
     wsCtx.clearRect(0, 0, w, h);
@@ -529,12 +547,28 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     }
   }
 
-  // Video timeupdate → waveform progress
+  // Video timeupdate → waveform progress & active segment
   wsVideo.addEventListener('timeupdate', () => {
     if (!wsVideo.duration) return;
     const pct = wsVideo.currentTime / wsVideo.duration;
     wsProgress.style.width = (pct * 100) + '%';
     drawWaveform(pct);
+
+    // Highlight active segment
+    const segs = document.querySelectorAll('#wsSrt .srt-segment');
+    let current = null;
+    segs.forEach(seg => {
+      const start = parseFloat(seg.dataset.start || '0');
+      const end = parseFloat(seg.dataset.end || '0');
+      if (wsVideo.currentTime >= start && wsVideo.currentTime < end) {
+        current = seg;
+      }
+    });
+    segs.forEach(s => s.classList.remove('active'));
+    if (current) {
+      current.classList.add('active');
+      current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   });
 
   // Waveform click → seek video
@@ -594,7 +628,7 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
       if (data.status === 'success') {
         document.getElementById('wsStatus').textContent = '转写完成';
         document.getElementById('wsText').value = data.full_text || '';
-        document.getElementById('wsSrt').textContent = data.srt_content || '';
+        renderWsSegments(data.srt_content || '');
         if (data.output_folder && wsFileId) {
           document.getElementById('wsDownloadArea').style.display = '';
           document.getElementById('wsDownloadBtn').onclick = () => {
@@ -611,4 +645,48 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
       btn.textContent = '开始转写';
     }
   });
+
+  // ── SRT Segments ──
+  function parseSrtTime(ts) {
+    // "00:00:01,500" → seconds
+    const m = ts.match(/(\d+):(\d+):(\d+)[,.](\d+)/);
+    if (!m) return 0;
+    return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseInt(m[3]) + parseInt(m[4]) / 1000;
+  }
+
+  function renderWsSegments(srt) {
+    const container = document.getElementById('wsSrt');
+    container.innerHTML = '';
+    const blocks = srt.split(/\n\s*\n/);
+    let activeEl = null;
+
+    blocks.forEach(block => {
+      const lines = block.trim().split('\n');
+      if (lines.length < 2) return;
+      // Line 1: index, Line 2: "00:00:01,000 --> 00:00:03,500", rest: text
+      const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
+      if (!timeMatch) return;
+      const startSec = parseSrtTime(timeMatch[1]);
+      const endSec = parseSrtTime(timeMatch[2]);
+      const text = lines.slice(2).join('\n').trim();
+
+      const div = document.createElement('div');
+      div.className = 'srt-segment';
+      div.dataset.start = startSec;
+      div.dataset.end = endSec;
+      div.innerHTML = `<div class="seg-time">${timeMatch[1]} → ${timeMatch[2]}</div><div class="seg-text">${text}</div>`;
+
+      div.addEventListener('click', () => {
+        if (wsVideo.duration) {
+          wsVideo.currentTime = startSec;
+          // Highlight active
+          if (activeEl) activeEl.classList.remove('active');
+          div.classList.add('active');
+          activeEl = div;
+        }
+      });
+
+      container.appendChild(div);
+    });
+  }
 })();

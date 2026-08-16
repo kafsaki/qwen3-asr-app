@@ -234,22 +234,28 @@
     <section id="tab-workspace" class="tab-content">
       <!-- 播放器区域 -->
       <div class="ws-player-area">
-        <div class="ws-video-container">
-          <input type="file" id="wsFile" accept="video/*" hidden>
-          <div class="ws-upload-overlay" id="wsUploadOverlay">
-            <div class="ws-upload-placeholder" id="wsPlaceholder">
-              <span class="upload-icon">+</span>
-              <span>点击或拖拽上传视频文件</span>
+        <div class="ws-player-top">
+          <div class="ws-player-left">
+            <div class="ws-video-container">
+              <input type="file" id="wsFile" accept="video/*" hidden>
+              <div class="ws-upload-overlay" id="wsUploadOverlay">
+                <div class="ws-upload-placeholder" id="wsPlaceholder">
+                  <span class="upload-icon">+</span>
+                  <span>点击或拖拽上传视频文件</span>
+                </div>
+              </div>
+              <div class="ws-player-wrapper" id="wsPlayerWrapper" style="display:none">
+                <video id="wsVideo" controls playsinline></video>
+              </div>
+            </div>
+            <div class="ws-waveform-wrap" id="wsWaveformWrap">
+              <canvas id="wsWaveform" class="ws-waveform"></canvas>
+              <div class="ws-waveform-progress" id="wsWaveformProgress"></div>
             </div>
           </div>
-          <div class="ws-player-wrapper" id="wsPlayerWrapper" style="display:none">
-            <video id="wsVideo" controls playsinline></video>
+          <div class="ws-srt-side">
+            <div class="srt-segments" id="wsSrt"></div>
           </div>
-        </div>
-        <!-- 波形图 -->
-        <div class="ws-waveform-wrap" id="wsWaveformWrap">
-          <canvas id="wsWaveform" class="ws-waveform"></canvas>
-          <div class="ws-waveform-progress" id="wsWaveformProgress"></div>
         </div>
       </div>
 
@@ -300,10 +306,6 @@
           <div class="form-group">
             <label>完整文本</label>
             <textarea id="wsText" rows="6" readonly placeholder="识别结果将显示在这里..."></textarea>
-          </div>
-          <div class="form-group">
-            <label>SRT 预览</label>
-            <div class="srt-preview" id="wsSrt"></div>
           </div>
           <div class="form-group" id="wsDownloadArea" style="display:none">
             <button class="btn-success" id="wsDownloadBtn">下载结果 (ZIP)</button>

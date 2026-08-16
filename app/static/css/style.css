@@ -169,15 +169,21 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 /* ── Workspace ── */
 .ws-player-area {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0; overflow: hidden;
+  overflow: hidden;
+}
+.ws-player-top {
+  display: flex; align-items: stretch; border-bottom: 2px solid var(--border);
+}
+.ws-player-left {
+  width: 80%; flex-shrink: 0; display: flex; flex-direction: column;
 }
 .ws-video-container {
   position: relative; width: 100%; padding-bottom: 56.25%; /* 16:9 */
-  background: #000; border-bottom: 2px solid var(--border);
+  background: #000; flex-shrink: 0;
 }
 .ws-upload-overlay {
   position: absolute; inset: 0; cursor: pointer;
-  border: 2px dashed var(--border); border-radius: var(--radius) var(--radius) 0 0;
+  border: 2px dashed var(--border); border-radius: var(--radius) 0 0 0;
   display: flex; align-items: center; justify-content: center;
   transition: border-color 0.2s, background 0.2s; z-index: 2;
 }
@@ -195,7 +201,7 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 
 /* Waveform */
 .ws-waveform-wrap {
-  position: relative; width: 100%; height: 80px; background: #0a0a12;
+  position: relative; width: 100%; height: 80px; background: #0a0a12; flex-shrink: 0;
   cursor: pointer; user-select: none;
 }
 .ws-waveform {
@@ -207,7 +213,36 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   border-right: 2px solid var(--primary);
 }
 
+/* SRT side panel */
+.ws-srt-side {
+  width: 20%; flex-shrink: 0; align-self: stretch;
+  display: flex; flex-direction: column;
+  background: var(--surface); border-left: 1px solid var(--border);
+}
+.ws-srt-side .srt-segments {
+  flex: 1; min-height: 0; max-height: none; overflow-y: auto; border: none; border-radius: 0;
+  padding: 8px 10px;
+}
+
 /* Form hint */
 .form-hint {
   font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4;
+}
+
+/* SRT segments (workspace) */
+.srt-segments {
+  padding: 12px; border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--border); min-height: 180px; max-height: 400px; overflow-y: auto;
+}
+.srt-segment {
+  padding: 8px 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s;
+  border-left: 3px solid transparent; margin-bottom: 2px;
+}
+.srt-segment:hover { background: var(--surface-hover); border-left-color: var(--primary); }
+.srt-segment.active { background: var(--surface-hover); border-left-color: var(--primary); }
+.srt-segment .seg-time {
+  font-size: 11px; color: var(--text-muted); margin-bottom: 2px; font-family: 'Courier New', monospace;
+}
+.srt-segment .seg-text {
+  font-size: 13px; color: var(--text); line-height: 1.5;
 }

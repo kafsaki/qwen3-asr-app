@@ -43,6 +43,12 @@ checkBackend();
 setInterval(checkBackend, 10000);
 
 // ── Upload Helpers ──
+async function fetchSrtContent(folder, filename) {
+  const resp = await fetch(`${API_BASE}/api/download/srt/${folder}/${filename}`);
+  if (!resp.ok) return '';
+  return await resp.text();
+}
+
 function setupUpload(areaId, inputId, previewId, nameId, removeId) {
   const area = document.getElementById(areaId);
   const input = document.getElementById(inputId);
@@ -214,7 +220,9 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
     if (data.status === 'success') {
       document.getElementById('singleStatus').textContent = '转写完成';
       document.getElementById('singleText').value = data.full_text || '';
-      document.getElementById('singleSrt').textContent = data.srt_content || '';
+      fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
+        document.getElementById('singleSrt').textContent = srt;
+      });
       if (data.output_folder) {
         // 从 output_folder 提取 UUID（如 a1b2c3d4_single → a1b2c3d4）
         const fileId = data.output_folder.split('_')[0];
@@ -301,11 +309,14 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
       });
 
       // 下拉切换预览
+      const batchOutFolder = data.output_folder;
       select.onchange = () => {
         const r = resultMap[select.value];
         if (r) {
           document.getElementById('batchText').value = r.full_text || '';
-          document.getElementById('batchSrt').textContent = r.srt_content || '';
+          fetchSrtContent(batchOutFolder, `${r.file_id}_single/全角色.srt`).then(srt => {
+            document.getElementById('batchSrt').textContent = srt;
+          });
         } else {
           document.getElementById('batchText').value = '';
           document.getElementById('batchSrt').textContent = '';
@@ -389,7 +400,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
 
     if (data.status === 'success') {
       document.getElementById('alignStatus').textContent = '对齐完成';
-      document.getElementById('alignSrt').textContent = data.srt_content || '';
+      fetchSrtContent(data.output_folder, 'align_result.srt').then(srt => {
+        document.getElementById('alignSrt').textContent = srt;
+      });
       if (data.output_folder) {
         const fileId = data.output_folder.split('_')[0];
         const origName = fileInput.files[0].name;
@@ -628,7 +641,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
       if (data.status === 'success') {
         document.getElementById('wsStatus').textContent = '转写完成';
         document.getElementById('wsText').value = data.full_text || '';
-        renderWsSegments(data.srt_content || '');
+        fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
+          renderWsSegments(srt);
+        });
         if (data.output_folder && wsFileId) {
           document.getElementById('wsDownloadArea').style.display = '';
           document.getElementById('wsDownloadBtn').onclick = () => {

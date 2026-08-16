@@ -130,12 +130,10 @@ async def transcribe(
                         f.write(spk_srt)
 
         shutil.make_archive(out_folder, "zip", out_folder)
-        shutil.rmtree(out_folder)
 
         return {
             "status": "success",
             "full_text": text,
-            "srt_content": all_srt,
             "speakers": speakers,
             "output_folder": f"{file_id}_single",
         }
@@ -196,9 +194,8 @@ async def transcribe_batch(
                             out_f.write(s_srt)
 
             shutil.make_archive(single_folder, "zip", single_folder)
-            shutil.rmtree(single_folder)
 
-            results.append({"filename": f.filename, "file_id": file_id, "status": "success", "full_text": text, "srt_content": all_srt})
+            results.append({"filename": f.filename, "file_id": file_id, "status": "success", "full_text": text})
         except Exception as e:
             results.append({"filename": f.filename, "file_id": file_id, "status": "error", "error": str(e)})
         finally:
@@ -243,11 +240,9 @@ async def align(
             f.write(srt_content)
 
         shutil.make_archive(out_folder, "zip", out_folder)
-        shutil.rmtree(out_folder)
 
         return {
             "status": "success",
-            "srt_content": srt_content,
             "output_folder": f"{file_id}_align",
         }
     except Exception as e:
@@ -272,7 +267,7 @@ def download_folder(folder: str):
     raise HTTPException(404, "Folder not found")
 
 
-@app.get("/api/download/srt/{folder}/{filename}")
+@app.get("/api/download/srt/{folder:path}/{filename}")
 def download_srt(folder: str, filename: str):
     file_path = os.path.join(OUTPUTS_DIR, folder, filename)
     if os.path.exists(file_path):

@@ -2,6 +2,7 @@
 import os
 import sys
 import json
+import socket
 import torch
 import shutil
 import datetime
@@ -245,11 +246,25 @@ def download_srt(folder: str, filename: str):
 
 
 # ── Main ────────────────────────────────────────────────
+def _check_port(host, port):
+    """Check if port is available. Returns True if available, False otherwise."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind((host, port))
+            return True
+        except OSError:
+            return False
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
+
+    if not _check_port(args.ip, args.port):
+        print(f"[ERROR] Port {args.port} is already in use or unavailable.")
+        sys.exit(1)
 
     os.environ.setdefault("ASR_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ASR-0.6B"))
     os.environ.setdefault("ALIGNER_CHECKPOINT", os.path.join(MODELS_DIR, "Qwen", "Qwen3-ForcedAligner-0.6B"))

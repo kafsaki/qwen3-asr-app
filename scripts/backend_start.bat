@@ -28,7 +28,7 @@ if "!CHOICE!"=="1" (
         exit /b 1
     )
     echo [INFO] Using portable Python: !PYTHON_EXE!
-    goto :start
+    goto :port_select
 )
 
 if "!CHOICE!"=="2" (
@@ -38,7 +38,7 @@ if "!CHOICE!"=="2" (
         if exist "!SAVED_PATH!" (
             set "PYTHON_EXE=!SAVED_PATH!"
             echo [INFO] Using saved Python: !PYTHON_EXE!
-            goto :start
+            goto :port_select
         )
     )
     echo.
@@ -59,7 +59,7 @@ if "!CHOICE!"=="2" (
         pause
         exit /b 1
     )
-    goto :start
+    goto :port_select
 )
 
 echo.
@@ -68,7 +68,12 @@ echo.
 pause
 exit /b 1
 
-:start
+:: --- Port Selection ---
+:port_select
+set DEFAULT_PORT=8000
+if not defined PORT set PORT=%DEFAULT_PORT%
+
+:port_loop
 set "ASR_PATH=%MODELS%\Qwen\Qwen3-ASR-0.6B"
 set "ALIGN_PATH=%MODELS%\Qwen\Qwen3-ForcedAligner-0.6B"
 
@@ -84,14 +89,51 @@ echo \___\_\^|__/^|__/\___/_/ /_/____/     /_/  ^|_/____/_/ ^|_^|  /_/  ^|_/ .__
 echo                                                                /_/   /_/
 echo.
 echo       Python: !PYTHON_EXE!
-echo       Port: 8000
+echo       Port: !PORT!
 echo.
+
+:: Check port availability
+netstat -ano | findstr /R /C:":!PORT! " >nul 2>&1
+if !errorlevel! equ 0 (
+    echo [ERROR] Port !PORT! is already in use.
+    echo.
+    set "NEW_PORT="
+    set /p NEW_PORT="Enter a custom port (or press Enter to exit): "
+    if "!NEW_PORT!"=="" (
+        echo Exiting.
+        pause
+        exit /b 1
+    )
+    set "INVALID="
+    for /f "delims=0123456789" %%a in ("!NEW_PORT!") do set "INVALID=1"
+    if defined INVALID (
+        echo [ERROR] Invalid port number. Please enter a number between 1024-65535.
+        echo.
+        set PORT=!NEW_PORT!
+        goto :port_loop
+    )
+    if !NEW_PORT! lss 1024 (
+        echo [ERROR] Port must be 1024 or higher.
+        echo.
+        set PORT=!NEW_PORT!
+        goto :port_loop
+    )
+    if !NEW_PORT! gtr 65535 (
+        echo [ERROR] Port must be 65535 or lower.
+        echo.
+        set PORT=!NEW_PORT!
+        goto :port_loop
+    )
+    set PORT=!NEW_PORT!
+    goto :port_loop
+)
+
 echo.
 echo Starting server, loading models...
 echo This may take a few minutes on first launch.
 echo.
 
 cd /d "%ROOT_DIR%model_server"
-"!PYTHON_EXE!" server.py --ip 127.0.0.1 --port 8000
+"!PYTHON_EXE!" server.py --ip 127.0.0.1 --port !PORT!
 
 pause

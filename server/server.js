@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3040;
 const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
@@ -110,7 +110,18 @@ app.get('/api/download/:folder', async (req, res) => {
   }
 });
 
-app.listen(PORT, '127.0.0.1', () => {
+const server = app.listen(PORT, '127.0.0.1', () => {
   console.log(`BFF server running at http://127.0.0.1:${PORT}`);
   console.log(`Model API: ${BACKEND_URL}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[ERROR] Port ${PORT} is already in use.`);
+  } else if (err.code === 'EACCES') {
+    console.error(`[ERROR] Port ${PORT} requires elevated privileges or is reserved by the system.`);
+  } else {
+    console.error(`[ERROR] ${err.message}`);
+  }
+  process.exit(1);
 });

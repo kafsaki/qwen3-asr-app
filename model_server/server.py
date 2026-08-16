@@ -2,10 +2,10 @@
 import os
 import sys
 import json
+import uuid
 import socket
 import torch
 import shutil
-import datetime
 import argparse
 from contextlib import asynccontextmanager
 
@@ -90,21 +90,20 @@ async def transcribe(
     if not file:
         raise HTTPException(400, "No file uploaded")
 
-    # Save uploaded file
+    file_id = uuid.uuid4().hex[:8]
     ext = os.path.splitext(file.filename or "audio.wav")[1] or ".wav"
-    local_path = os.path.join(UPLOADS_DIR, f"upload_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}")
+    local_path = os.path.join(UPLOADS_DIR, f"single_{file_id}{ext}")
     with open(local_path, "wb") as f:
         f.write(await file.read())
 
     try:
         text, ts, sd = engine.run(local_path, language, diarize, SD_MODEL_PATH, PROJECT_ROOT, hotwords)
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_single")
-        out_folder = os.path.join(OUTPUTS_DIR, timestamp)
+        out_folder = os.path.join(OUTPUTS_DIR, f"{file_id}_single")
         os.makedirs(out_folder, exist_ok=True)
 
         all_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc)
-        all_path = os.path.join(out_folder, "single_全员.srt")
+        all_path = os.path.join(out_folder, "全角色.srt")
         with open(all_path, "w", encoding="utf-8") as f:
             f.write(all_srt)
 
@@ -114,15 +113,18 @@ async def transcribe(
             for spk in speakers:
                 spk_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc, target_spk=spk)
                 if spk_srt.strip():
-                    with open(os.path.join(out_folder, f"single_角色_{spk}.srt"), "w", encoding="utf-8") as f:
+                    with open(os.path.join(out_folder, f"角色_{spk}.srt"), "w", encoding="utf-8") as f:
                         f.write(spk_srt)
+
+        shutil.make_archive(out_folder, "zip", out_folder)
+        shutil.rmtree(out_folder)
 
         return {
             "status": "success",
             "full_text": text,
             "srt_content": all_srt,
             "speakers": speakers,
-            "output_folder": timestamp,
+            "output_folder": f"{file_id}_single",
         }
     except Exception as e:
         import traceback
@@ -146,23 +148,26 @@ async def transcribe_batch(
     if not files:
         raise HTTPException(400, "No files uploaded")
 
-    batch_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_folder = os.path.join(OUTPUTS_DIR, batch_id)
+    batch_id = uuid.uuid4().hex
+    out_folder = os.path.join(OUTPUTS_DIR, f"{batch_id}_batch")
     os.makedirs(out_folder, exist_ok=True)
 
     results = []
     for f in files:
         ext = os.path.splitext(f.filename or "audio.wav")[1] or ".wav"
-        local_path = os.path.join(UPLOADS_DIR, f"batch_{batch_id}_{f.filename}")
+        file_id = uuid.uuid4().hex[:8]  # 唯一标识，关联前端文件与后端输出
+        local_path = os.path.join(UPLOADS_DIR, f"batch_{batch_id}_{file_id}{ext}")
         with open(local_path, "wb") as fh:
             fh.write(await f.read())
 
         try:
-            name = os.path.splitext(f.filename)[0]
             text, ts, sd = engine.run(local_path, language, diarize, SD_MODEL_PATH, PROJECT_ROOT, hotwords)
 
+            single_folder = os.path.join(out_folder, f"{file_id}_single")
+            os.makedirs(single_folder, exist_ok=True)
+
             all_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc)
-            with open(os.path.join(out_folder, f"{name}_全员.srt"), "w", encoding="utf-8") as out_f:
+            with open(os.path.join(single_folder, "全角色.srt"), "w", encoding="utf-8") as out_f:
                 out_f.write(all_srt)
 
             if diarize and sd and "text" in sd:
@@ -170,18 +175,21 @@ async def transcribe_batch(
                 for s in spks:
                     s_srt = ExportUtils.generate_srt_content(text, ts, sd, max_chars, split_by_punc, target_spk=s)
                     if s_srt.strip():
-                        with open(os.path.join(out_folder, f"{name}_角色_{s}.srt"), "w", encoding="utf-8") as out_f:
+                        with open(os.path.join(single_folder, f"角色_{s}.srt"), "w", encoding="utf-8") as out_f:
                             out_f.write(s_srt)
 
-            results.append({"filename": f.filename, "status": "success", "full_text": text})
+            shutil.make_archive(single_folder, "zip", single_folder)
+            shutil.rmtree(single_folder)
+
+            results.append({"filename": f.filename, "file_id": file_id, "status": "success", "full_text": text, "srt_content": all_srt})
         except Exception as e:
-            results.append({"filename": f.filename, "status": "error", "error": str(e)})
+            results.append({"filename": f.filename, "file_id": file_id, "status": "error", "error": str(e)})
         finally:
             if os.path.exists(local_path):
                 os.remove(local_path)
 
-    zip_path = shutil.make_archive(out_folder, "zip", out_folder)
-    return {"status": "completed", "results": results, "output_folder": batch_id}
+    shutil.make_archive(out_folder, "zip", out_folder)
+    return {"status": "completed", "results": results, "output_folder": f"{batch_id}_batch"}
 
 
 # ── Align ───────────────────────────────────────────────
@@ -194,8 +202,9 @@ async def align(
     if not file or not reference_text:
         raise HTTPException(400, "Missing file or reference text")
 
+    file_id = uuid.uuid4().hex[:8]
     ext = os.path.splitext(file.filename or "audio.wav")[1] or ".wav"
-    local_path = os.path.join(UPLOADS_DIR, f"align_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}{ext}")
+    local_path = os.path.join(UPLOADS_DIR, f"align_{file_id}{ext}")
     with open(local_path, "wb") as f:
         f.write(await file.read())
 
@@ -203,17 +212,19 @@ async def align(
         text, ts = engine.align(local_path, reference_text, language)
         srt_content = ExportUtils.generate_srt_content(text, ts, sd_result=None, max_chars=40, split_by_punc=True)
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_align")
-        out_folder = os.path.join(OUTPUTS_DIR, timestamp)
+        out_folder = os.path.join(OUTPUTS_DIR, f"{file_id}_align")
         os.makedirs(out_folder, exist_ok=True)
         srt_path = os.path.join(out_folder, "align_result.srt")
         with open(srt_path, "w", encoding="utf-8") as f:
             f.write(srt_content)
 
+        shutil.make_archive(out_folder, "zip", out_folder)
+        shutil.rmtree(out_folder)
+
         return {
             "status": "success",
             "srt_content": srt_content,
-            "output_folder": timestamp,
+            "output_folder": f"{file_id}_align",
         }
     except Exception as e:
         import traceback
@@ -242,6 +253,14 @@ def download_srt(folder: str, filename: str):
     file_path = os.path.join(OUTPUTS_DIR, folder, filename)
     if os.path.exists(file_path):
         return FileResponse(file_path, filename=filename, media_type="text/plain")
+    raise HTTPException(404, "File not found")
+
+
+@app.get("/api/download/{batch_folder}/{single_zip}")
+def download_single(batch_folder: str, single_zip: str):
+    file_path = os.path.join(OUTPUTS_DIR, batch_folder, single_zip)
+    if os.path.exists(file_path):
+        return FileResponse(file_path, filename=single_zip, media_type="application/zip")
     raise HTTPException(404, "File not found")
 
 

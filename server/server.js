@@ -110,6 +110,19 @@ app.get('/api/download/:folder', async (req, res) => {
   }
 });
 
+app.get('/api/download/:folder/:file', async (req, res) => {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/download/${req.params.folder}/${req.params.file}`);
+    if (!response.ok) throw new Error('Download failed');
+    const buffer = await response.buffer();
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${req.params.file}"`);
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const server = app.listen(PORT, '127.0.0.1', () => {
   console.log(`BFF server running at http://127.0.0.1:${PORT}`);
   console.log(`Model API: ${BACKEND_URL}`);

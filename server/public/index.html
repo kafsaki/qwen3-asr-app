@@ -144,7 +144,17 @@
             <div class="status-box" id="batchStatus">等待上传...</div>
           </div>
           <div class="form-group">
-            <label>最后一个预览</label>
+            <label>当前查看</label>
+            <select id="batchFileSelect" class="form-select" style="width:100%">
+              <option value="">-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>完整文本</label>
+            <textarea id="batchText" rows="6" readonly placeholder="请点击下方下载区域的按钮查看对应文件..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>SRT预览</label>
             <div class="srt-preview" id="batchSrt"></div>
           </div>
           <div class="form-group">
@@ -152,7 +162,9 @@
             <div class="log-box" id="batchLog"></div>
           </div>
           <div class="form-group" id="batchDownloadArea" style="display:none">
-            <button class="btn-success" id="batchDownloadBtn">下载全部结果 (ZIP)</button>
+            <label>下载</label>
+            <div id="batchSingleDownloads"></div>
+            <button class="btn-success" id="batchDownloadBtn" style="margin-top:8px">下载全部结果 (ZIP)</button>
           </div>
         </div>
       </div>

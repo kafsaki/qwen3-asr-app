@@ -128,6 +128,7 @@ function setupBatchUpload() {
       placeholder.style.display = 'none';
       fileList.style.display = '';
       fileList.innerHTML = '';
+
       Array.from(input.files).forEach((file, i) => {
         const item = document.createElement('div');
         item.className = 'file-item';
@@ -186,6 +187,11 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
       document.getElementById('singleText').value = data.full_text || '';
       document.getElementById('singleSrt').textContent = data.srt_content || '';
       if (data.output_folder) {
+        // 从 output_folder 提取 UUID（如 a1b2c3d4_single → a1b2c3d4）
+        const fileId = data.output_folder.split('_')[0];
+        const origName = fileInput.files[0].name;
+        document.getElementById('singleFileName').innerHTML =
+          `${origName} <span class="file-id">(${fileId})</span>`;
         document.getElementById('singleDownloadArea').style.display = '';
         document.getElementById('singleDownloadBtn').onclick = () => {
           window.open(API_BASE + '/api/download/' + data.output_folder, '_blank');
@@ -215,7 +221,9 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
   btn.innerHTML = '<span class="spinner"></span>处理中...';
   document.getElementById('batchStatus').innerHTML = '<span class="spinner"></span>正在批量处理...';
   document.getElementById('batchLog').textContent = '';
+  document.getElementById('batchText').value = '';
   document.getElementById('batchSrt').textContent = '';
+  document.getElementById('batchFileSelect').innerHTML = '<option value="">-</option>';
   document.getElementById('batchDownloadArea').style.display = 'none';
 
   try {
@@ -233,15 +241,88 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
     const data = await resp.json();
 
     document.getElementById('batchStatus').textContent = data.status === 'completed' ? '全部完成' : '处理完成';
-    const logLines = (data.results || []).map(r =>
-      r.status === 'success' ? `[OK] ${r.filename}` : `[FAIL] ${r.filename}: ${r.error}`
-    );
+
+    // 检测同名文件
+    const nameCount = {};
+    data.results.forEach(r => { nameCount[r.filename] = (nameCount[r.filename] || 0) + 1; });
+    const hasDuplicates = Object.values(nameCount).some(c => c > 1);
+
+    const logLines = data.results.map(r => {
+      if (r.status === 'success') {
+        return hasDuplicates ? `[OK] ${r.filename} (${r.file_id})` : `[OK] ${r.filename}`;
+      }
+      return `[FAIL] ${r.filename}: ${r.error}`;
+    });
     document.getElementById('batchLog').textContent = logLines.join('\n');
+
     if (data.output_folder) {
       document.getElementById('batchDownloadArea').style.display = '';
+
+      // 填充下拉列表并存储结果
+      const select = document.getElementById('batchFileSelect');
+      select.innerHTML = '<option value="">-</option>';
+      const resultMap = {};
+
+      data.results.forEach(r => {
+        if (r.status === 'success' && r.file_id) {
+          const label = hasDuplicates ? `${r.filename} (${r.file_id})` : r.filename;
+          const opt = document.createElement('option');
+          opt.value = r.file_id;
+          opt.textContent = label;
+          select.appendChild(opt);
+          resultMap[r.file_id] = r;
+        }
+      });
+
+      // 下拉切换预览
+      select.onchange = () => {
+        const r = resultMap[select.value];
+        if (r) {
+          document.getElementById('batchText').value = r.full_text || '';
+          document.getElementById('batchSrt').textContent = r.srt_content || '';
+        } else {
+          document.getElementById('batchText').value = '';
+          document.getElementById('batchSrt').textContent = '';
+        }
+      };
+
+      // 默认选中第一个
+      if (select.options.length > 1) {
+        select.selectedIndex = 1;
+        select.dispatchEvent(new Event('change'));
+      }
+
+      // 单独下载按钮（仅下载，不切换预览）
+      const singleDiv = document.getElementById('batchSingleDownloads');
+      singleDiv.innerHTML = '';
+      data.results.forEach(r => {
+        if (r.status === 'success' && r.file_id) {
+          const btn = document.createElement('button');
+          btn.className = 'btn-download';
+          btn.textContent = hasDuplicates
+            ? `⬇ ${r.filename} (${r.file_id})`
+            : `⬇ ${r.filename}`;
+          btn.onclick = () => {
+            window.open(API_BASE + '/api/download/' + data.output_folder + '/' + r.file_id + '_single.zip', '_blank');
+          };
+          singleDiv.appendChild(btn);
+        }
+      });
+
       document.getElementById('batchDownloadBtn').onclick = () => {
         window.open(API_BASE + '/api/download/' + data.output_folder, '_blank');
       };
+
+      // 用后端UUID更新上传列表中的同名文件
+      if (hasDuplicates) {
+        const items = document.getElementById('batchFileList').querySelectorAll('.file-item');
+        data.results.forEach((r, i) => {
+          if (r.status === 'success' && r.file_id && items[i]) {
+            const nameSpan = items[i].querySelector('.file-name');
+            nameSpan.innerHTML = `${r.filename} <span class="file-id">(${r.file_id})</span>`;
+          }
+        });
+      }
     }
   } catch (err) {
     document.getElementById('batchStatus').textContent = '请求失败: ' + err.message;
@@ -284,6 +365,10 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
       document.getElementById('alignStatus').textContent = '对齐完成';
       document.getElementById('alignSrt').textContent = data.srt_content || '';
       if (data.output_folder) {
+        const fileId = data.output_folder.split('_')[0];
+        const origName = fileInput.files[0].name;
+        document.getElementById('alignFileName').innerHTML =
+          `${origName} <span class="file-id">(${fileId})</span>`;
         document.getElementById('alignDownloadArea').style.display = '';
         document.getElementById('alignDownloadBtn').onclick = () => {
           window.open(API_BASE + '/api/download/' + data.output_folder, '_blank');

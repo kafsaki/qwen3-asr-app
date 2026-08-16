@@ -7,21 +7,18 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <header>
-    <h1>Qwen3-ASR Pro 离线增强版</h1>
-    <p class="subtitle">超长音频转写 · 精准角色识别 · 热词注入 · 文稿对齐</p>
-    <div class="status-bar">
-      <span id="backendStatus" class="status-dot offline"></span>
-      <span id="backendStatusText">检测后端...</span>
-    </div>
-  </header>
-
   <main>
     <div class="tabs">
-      <button class="tab-btn active" data-tab="single">单音频识别</button>
-      <button class="tab-btn" data-tab="batch">批量识别</button>
-      <button class="tab-btn" data-tab="align">精准对齐</button>
-      <button class="tab-btn" data-tab="workspace">工作台</button>
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="single">单音频识别</button>
+        <button class="tab-btn" data-tab="batch">批量识别</button>
+        <button class="tab-btn" data-tab="align">精准对齐</button>
+        <button class="tab-btn" data-tab="workspace">工作台</button>
+      </div>
+      <div class="status-bar">
+        <span id="backendStatus" class="status-dot offline"></span>
+        <span id="backendStatusText">检测后端...</span>
+      </div>
     </div>
 
     <!-- ── Single Tab ── -->
@@ -254,7 +251,11 @@
             </div>
           </div>
           <div class="ws-srt-side">
-            <div class="srt-segments" id="wsSrt"></div>
+            <input type="file" id="wsSrtFile" accept=".srt" hidden>
+            <div class="ws-srt-upload" id="wsSrtUpload">
+              <span>拖入或点击上传 SRT 文件</span>
+            </div>
+            <div class="srt-segments" id="wsSrt" style="display:none"></div>
           </div>
         </div>
       </div>

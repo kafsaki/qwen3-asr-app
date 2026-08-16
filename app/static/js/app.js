@@ -492,6 +492,40 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     wsInput.files = e.dataTransfer.files;
     handleWsFile();
   });
+
+  // SRT file upload in sidebar
+  const wsSrtUpload = document.getElementById('wsSrtUpload');
+  const wsSrtFile = document.getElementById('wsSrtFile');
+  const wsSrtContainer = document.getElementById('wsSrt');
+
+  wsSrtUpload.addEventListener('click', () => wsSrtFile.click());
+  wsSrtUpload.addEventListener('dragover', (e) => { e.preventDefault(); wsSrtUpload.classList.add('drag-over'); });
+  wsSrtUpload.addEventListener('dragleave', () => { wsSrtUpload.classList.remove('drag-over'); });
+  wsSrtUpload.addEventListener('drop', (e) => {
+    e.preventDefault();
+    wsSrtUpload.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) {
+      wsSrtFile.files = e.dataTransfer.files;
+      handleWsSrtFile();
+    }
+  });
+  wsSrtFile.addEventListener('change', handleWsSrtFile);
+
+  function handleWsSrtFile() {
+    if (!wsSrtFile.files.length) return;
+    const file = wsSrtFile.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      renderWsSegments(reader.result);
+      showWsSrtSegments();
+    };
+    reader.readAsText(file);
+  }
+
+  function showWsSrtSegments() {
+    wsSrtUpload.style.display = 'none';
+    wsSrtContainer.style.display = '';
+  }
   wsInput.addEventListener('change', handleWsFile);
 
   async function handleWsFile() {
@@ -643,6 +677,7 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
         document.getElementById('wsText').value = data.full_text || '';
         fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
           renderWsSegments(srt);
+          showWsSrtSegments();
         });
         if (data.output_folder && wsFileId) {
           document.getElementById('wsDownloadArea').style.display = '';

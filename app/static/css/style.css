@@ -23,18 +23,9 @@ body {
   min-height: 100vh;
 }
 
-header {
-  text-align: center;
-  padding: 28px 20px 16px;
-  background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
-  border-bottom: 1px solid var(--border);
-}
-header h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
-header .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
-
 .status-bar {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  margin-top: 10px; font-size: 12px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; flex-shrink: 0;
 }
 .status-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -47,8 +38,12 @@ main { max-width: 1200px; margin: 0 auto; padding: 20px; }
 
 /* Tabs */
 .tabs {
-  display: flex; gap: 0; border-bottom: 2px solid var(--border);
-  margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px; padding-top: 16px;
+}
+.tabs-nav {
+  display: flex; gap: 0;
 }
 .tab-btn {
   padding: 12px 28px; background: none; border: none; color: var(--text-muted);
@@ -223,6 +218,14 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   flex: 1; min-height: 0; max-height: none; overflow-y: auto; border: none; border-radius: 0;
   padding: 8px 10px;
 }
+.ws-srt-upload {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 16px; border: 2px dashed var(--border); border-radius: 0;
+  cursor: pointer; color: var(--text-muted); font-size: 12px;
+  text-align: center; transition: border-color 0.2s, background 0.2s;
+}
+.ws-srt-upload:hover { border-color: var(--primary); background: var(--surface-hover); }
+.ws-srt-upload.drag-over { border-color: var(--primary); background: rgba(99,102,241,0.08); }
 
 /* Form hint */
 .form-hint {

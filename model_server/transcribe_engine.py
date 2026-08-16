@@ -1,5 +1,6 @@
 # transcribe_engine.py
 import os
+import time
 import torch
 import torchaudio
 import re
@@ -16,7 +17,20 @@ class TranscribeEngine:
         return f"Vocabulary: {words}."
 
     def run(self, file_path, lang, diarize, sd_model_path, project_root, hotwords=""):
+        t_start = time.time()
+        audio_filename = os.path.basename(file_path)
+        audio_duration = AudioUtils.get_duration(file_path)
+        
+        print(f"--- 音频信息 ---")
+        print(f"  文件: {audio_filename}")
+        print(f"  时长: {audio_duration:.1f} 秒")
+        print(f"  语言: {lang}")
+        if hotwords:
+            print(f"  热词: {hotwords}")
+        print(f"  说话人分离: {'是' if diarize else '否'}")
+        
         std_wav = AudioUtils.convert_to_std_wav(file_path)
+        print(f"  音频标准化: 16kHz, mono, s16le")
         
         sd_res = None
         if diarize:
@@ -53,8 +67,24 @@ class TranscribeEngine:
 
         chunks = AudioUtils.split_audio(std_wav)
         system_prompt = self._build_system_prompt(hotwords)
+        
+        print(f"--- Qwen3-ASR 转写 ---")
+        model_device = getattr(self.hub.asr_model, 'device', 'unknown')
+        model_dtype = getattr(self.hub.asr_model, 'dtype', 'unknown')
+        print(f"  设备: {model_device}")
+        print(f"  精度: {model_dtype}")
+        print(f"  音频分片: {len(chunks)} 段")
+        if system_prompt:
+            print(f"  热词提示: {system_prompt}")
+        
         all_full_text, all_timestamps = "", []
-        for chunk in chunks:
+        for i, chunk in enumerate(chunks):
+            if len(chunks) > 1:
+                print(f"  [{i+1}/{len(chunks)}] 处理片段 offset={chunk['offset']:.1f}s...")
+            else:
+                print(f"  正在转写...")
+            
+            t_chunk = time.time()
             if torch.cuda.is_available(): torch.cuda.empty_cache()
             res = self.hub.asr_model.transcribe(
                 audio=chunk['path'], 
@@ -62,8 +92,17 @@ class TranscribeEngine:
                 context=system_prompt, 
                 return_time_stamps=True
             )[0]
-            all_full_text += getattr(res, 'text', '') + " "
-            for ts in getattr(res, 'time_stamps', []):
+            elapsed = time.time() - t_chunk
+            
+            chunk_text = getattr(res, 'text', '')
+            chunk_ts = getattr(res, 'time_stamps', [])
+            print(f"    耗时: {elapsed:.1f}s | 文本: {len(chunk_text)} 字符 | 时间戳: {len(chunk_ts)} 个")
+            if chunk_text:
+                preview = chunk_text[:80] + ("..." if len(chunk_text) > 80 else "")
+                print(f"    内容: {preview}")
+            
+            all_full_text += chunk_text + " "
+            for ts in chunk_ts:
                 all_timestamps.append({
                     'start_time': ts.start_time + chunk['offset'],
                     'end_time': ts.end_time + chunk['offset'],
@@ -72,6 +111,11 @@ class TranscribeEngine:
             if chunk['path'] != std_wav:
                 if os.path.exists(chunk['path']): os.remove(chunk['path'])
             
+        print(f"--- 转写完成 ---")
+        print(f"  总耗时: {time.time() - t_start:.1f}s")
+        print(f"  总字符: {len(all_full_text.strip())}")
+        print(f"  时间戳: {len(all_timestamps)} 个")
+        
         if os.path.exists(std_wav): os.remove(std_wav)
         return all_full_text.strip(), all_timestamps, sd_res
 

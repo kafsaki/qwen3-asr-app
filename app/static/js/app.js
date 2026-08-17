@@ -11,7 +11,44 @@ window.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById(id);
     if (btn) btn.disabled = true;
   });
+  // Disable transcribe buttons initially
+  const wsBtn = document.getElementById('wsBtn');
+  if (wsBtn) wsBtn.disabled = true;
 });
+
+// ── Theme Color ──
+let _themeColor = localStorage.getItem('themeColor') || '#0000FF';
+const _onThemeChange = [];
+
+function applyThemeColor(color) {
+  _themeColor = color;
+  localStorage.setItem('themeColor', color);
+  const root = document.documentElement;
+  root.style.setProperty('--primary', color);
+  // Generate hover: lighten the color by 20%
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  const hover = `rgb(${Math.min(255, r + 50)},${Math.min(255, g + 50)},${Math.min(255, b + 50)})`;
+  root.style.setProperty('--primary-hover', hover);
+  // Update speaker-0 style
+  let styleEl = document.getElementById('theme-speaker-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'theme-speaker-style';
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    .status-dot.online { background: ${color}; box-shadow: 0 0 6px ${color}; }
+  `;
+  // Update the theme color button
+  const btn = document.getElementById('themeColorBtn');
+  if (btn) btn.style.background = color;
+  // Notify listeners
+  _onThemeChange.forEach(fn => fn(color));
+}
+
+applyThemeColor(_themeColor);
 
 // ── Tab Switching ──
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -21,6 +58,22 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
   });
+});
+
+// ── Nav shrink on scroll ──
+const _tabs = document.querySelector('.tabs');
+window.addEventListener('scroll', () => {
+  if (_tabs) {
+    _tabs.classList.toggle('compact', window.scrollY > 40);
+  }
+});
+
+// ── Theme Color Picker ──
+document.getElementById('themeColorBtn').addEventListener('click', async () => {
+  const color = await showColorPickerDialog('主题颜色', _themeColor);
+  if (color) {
+    applyThemeColor(color);
+  }
 });
 
 // ── Custom Dialog (replaces browser prompt/confirm) ──
@@ -73,6 +126,119 @@ function showConfirm(title, body, danger = false) {
 function showPrompt(title, body, defaultValue = '') {
   return showDialog(title, body, { input: true, defaultValue, confirmText: '确定', cancelText: '取消' });
 }
+
+function showNewSpeakerDialog() {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog-box">
+        <div class="dialog-title">新建说话人</div>
+        <div class="dialog-body">请输入新说话人名称</div>
+        <input class="dialog-input" type="text" placeholder="说话人名称" autofocus>
+        <div class="color-palette" id="newSpeakerPalette"></div>
+        <div class="dialog-actions">
+          <button class="dialog-btn" data-action="cancel">取消</button>
+          <button class="dialog-btn primary" data-action="confirm">确定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const inputEl = overlay.querySelector('.dialog-input');
+    const paletteEl = overlay.querySelector('#newSpeakerPalette');
+    let selectedColor = _themeColor;
+
+    renderColorPalette(paletteEl, selectedColor, (color) => { selectedColor = color; });
+
+    inputEl.focus();
+    inputEl.select();
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const name = inputEl.value.trim();
+        resolve(name ? { name, color: selectedColor } : null);
+      }
+      if (e.key === 'Escape') resolve(null);
+    });
+
+    overlay.addEventListener('click', e => {
+      const action = e.target.dataset.action;
+      if (action === 'confirm') {
+        const name = inputEl.value.trim();
+        resolve(name ? { name, color: selectedColor } : null);
+      }
+      if (action === 'cancel') resolve(null);
+      if (e.target === overlay) resolve(null);
+    });
+    overlay.addEventListener('keydown', e => {
+      if (e.key === 'Escape') resolve(null);
+    });
+  }).finally(() => {
+    const overlay = document.querySelector('.dialog-overlay');
+    if (overlay) overlay.remove();
+  });
+}
+
+// ── Custom Color Palette ──
+const PALETTE_COLORS = [
+  '#0000FF', '#0055FF', '#2979FF', '#448AFF', '#82B1FF', '#B388FF',
+  '#6366F1', '#7C4DFF', '#9C27B0', '#E040FB', '#CE93D8', '#BA68C8',
+  '#FF4081', '#FF5252', '#EC4899', '#F06292', '#FF6E40', '#FF8A65',
+  '#F59E0B', '#FF9800', '#FFC107', '#FFD54F', '#FF6D00', '#FFAB00',
+  '#00C853', '#22C55E', '#4CAF50', '#8BC34A', '#69F0AE', '#B9F6CA',
+  '#009688', '#14B8A6', '#26A69A', '#00BCD4', '#06B6D4', '#4DD0E1',
+  '#607D8B', '#78909C', '#90A4AE', '#B0BEC5', '#546E7A', '#37474F',
+];
+
+function renderColorPalette(container, selectedColor, onSelect) {
+  container.innerHTML = '';
+  PALETTE_COLORS.forEach(color => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    swatch.style.background = color;
+    if (color === selectedColor) swatch.classList.add('selected');
+    swatch.addEventListener('click', () => {
+      container.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+      if (onSelect) onSelect(color);
+    });
+    container.appendChild(swatch);
+  });
+}
+
+function showColorPickerDialog(title, currentColor) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog-box dialog-palette-box">
+        <div class="dialog-title">${title}</div>
+        <div class="color-palette" id="colorPickerPalette"></div>
+        <div class="dialog-actions">
+          <button class="dialog-btn" data-action="cancel">取消</button>
+          <button class="dialog-btn primary" data-action="confirm">确定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const paletteEl = overlay.querySelector('#colorPickerPalette');
+    let selectedColor = currentColor;
+
+    renderColorPalette(paletteEl, selectedColor, (color) => { selectedColor = color; });
+
+    overlay.addEventListener('click', e => {
+      const action = e.target.dataset.action;
+      if (action === 'confirm') resolve(selectedColor);
+      if (action === 'cancel') resolve(null);
+      if (e.target === overlay) resolve(null);
+    });
+    overlay.addEventListener('keydown', e => {
+      if (e.key === 'Escape') resolve(null);
+    });
+  }).finally(() => {
+    const overlay = document.querySelector('.dialog-overlay');
+    if (overlay) overlay.remove();
+  });
+}
 async function checkBackend() {
   try {
     const resp = await fetch(API_BASE + '/api/status');
@@ -114,18 +280,22 @@ function setupUpload(areaId, inputId, previewId, nameId, removeId) {
   area.addEventListener('click', (e) => {
     if (e.target !== removeBtn) input.click();
   });
-  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#0000FF'; });
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = _themeColor; });
   area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
   area.addEventListener('drop', (e) => {
     e.preventDefault();
     area.style.borderColor = '';
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
+    if (!files.length) return;
     if (input.multiple) {
       const dt = new DataTransfer();
       for (const file of input.files) dt.items.add(file);
-      for (const file of e.dataTransfer.files) dt.items.add(file);
+      for (const file of files) dt.items.add(file);
       input.files = dt.files;
     } else {
-      input.files = e.dataTransfer.files;
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+      input.files = dt.files;
     }
     updatePreview();
   });
@@ -163,15 +333,17 @@ function setupBatchUpload() {
     if (!e.target.closest('.btn-remove')) input.click();
   });
 
-  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#0000FF'; });
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = _themeColor; });
   area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
 
   area.addEventListener('drop', (e) => {
     e.preventDefault();
     area.style.borderColor = '';
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('audio/'));
+    if (!files.length) return;
     const dt = new DataTransfer();
     for (const file of input.files) dt.items.add(file);
-    for (const file of e.dataTransfer.files) dt.items.add(file);
+    for (const file of files) dt.items.add(file);
     input.files = dt.files;
     renderFileList();
   });
@@ -212,6 +384,19 @@ function setupBatchUpload() {
 setupUpload('singleUploadArea', 'singleFile', 'singlePreview', 'singleFileName', 'singleRemoveBtn');
 setupBatchUpload();
 setupUpload('alignUploadArea', 'alignFile', 'alignPreview', 'alignFileName', 'alignRemoveBtn');
+
+// ── Button enable/disable based on file selection ──
+function setupFileButton(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!input || !btn) return;
+  btn.disabled = !input.files.length;
+  input.addEventListener('change', () => { btn.disabled = !input.files.length; });
+}
+
+setupFileButton('singleFile', 'singleBtn');
+setupFileButton('batchFiles', 'batchBtn');
+setupFileButton('alignFile', 'alignBtn');
 
 // ── Range Display ──
 document.getElementById('singleChars').addEventListener('input', function() {
@@ -378,12 +563,22 @@ function createSpeakerManager() {
     speakers: new Map(), // displayName -> { originalName, count, colorIndex }
     _colorIdx: 0,
     _colorMap: new Map(), // originalName -> colorIndex
+    _customColors: new Map(), // displayName -> hex color
 
     reset() {
       this.segments = [];
       this.speakers = new Map();
       this._colorIdx = 0;
       this._colorMap = new Map();
+      this._customColors = new Map();
+    },
+
+    setColor(name, color) {
+      this._customColors.set(name, color);
+    },
+
+    getColor(name) {
+      return this._customColors.get(name) || null;
     },
 
     parse(srt) {
@@ -500,8 +695,10 @@ function renderSpeakerList(panelId, sm) {
   }
   panel.style.display = '';
   sm.speakers.forEach((info, name) => {
+    const customColor = sm.getColor(name);
     const el = document.createElement('span');
-    el.className = `speaker-item speaker-${info.colorIndex % 8}`;
+    el.className = `speaker-item${customColor ? '' : ' speaker-' + (info.colorIndex % 8)}`;
+    if (customColor) el.style.background = customColor;
     if (info.count === 0) el.classList.add('can-delete');
     el.innerHTML = `${info.displayName}<span class="speaker-count">${info.count}</span>${info.count === 0 ? '<span class="speaker-del">×</span>' : ''}`;
     el.addEventListener('click', async (e) => {
@@ -520,11 +717,20 @@ function renderSpeakerList(panelId, sm) {
       if (_dropdownAnchor === el) { closeDropdown(); return; }
       const srtMap = { singleSpeakerList: 'singleSrt', batchSpeakerList: 'batchSrt', alignSpeakerList: 'alignSrt', wsSpeakerList: 'wsSrt' };
       const srtId = srtMap[panelId] || panelId.replace('SpeakerList', 'Srt');
+      const currentColor = customColor || '#0000FF';
       showSpeakerDropdown(el, [
         { label: '重命名', action: async () => {
           const newName = await showPrompt('重命名说话人', '请输入新名称', name);
           if (newName && newName !== name) {
             sm.renameGlobal(name, newName);
+            renderSpeakerList(panelId, sm);
+            renderSrts(srtId, sm, _srtOptions.get(srtId) || {});
+          }
+        }},
+        { label: '颜色', action: async () => {
+          const color = await showColorPickerDialog('选择颜色', currentColor);
+          if (color) {
+            sm.setColor(name, color);
             renderSpeakerList(panelId, sm);
             renderSrts(srtId, sm, _srtOptions.get(srtId) || {});
           }
@@ -562,8 +768,13 @@ function renderSrts(containerId, sm, options = {}) {
     let html = `<div class="seg-header">`;
     if (seg.speakerDisplay) {
       const info = sm.speakers.get(seg.speakerDisplay);
+      const customColor = sm.getColor(seg.speakerDisplay);
       const ci = info ? info.colorIndex % 8 : 0;
-      html += `<span class="speaker-badge speaker-${ci}" data-seg="${seg.index}">${seg.speakerDisplay}<span class="badge-edit">▼</span></span>`;
+      if (customColor) {
+        html += `<span class="speaker-badge" style="background:${customColor}" data-seg="${seg.index}">${seg.speakerDisplay}<span class="badge-edit">▼</span></span>`;
+      } else {
+        html += `<span class="speaker-badge speaker-${ci}" data-seg="${seg.index}">${seg.speakerDisplay}<span class="badge-edit">▼</span></span>`;
+      }
     }
     html += `<span class="seg-time">${seg.startTime} → ${seg.endTime}</span></div>`;
     html += `<div class="seg-text">${seg.text}</div>`;
@@ -594,7 +805,18 @@ function renderSrts(containerId, sm, options = {}) {
         const names = sm.getNames();
         const items = names.map(name => {
           const info = sm.speakers.get(name);
+          const customColor = sm.getColor(name);
           const ci = info ? info.colorIndex % 8 : 0;
+          if (customColor) {
+            return {
+              html: `<span class="speaker-badge" style="background:${customColor};cursor:pointer;font-size:11px">${name}</span>`,
+              action: () => {
+                sm.renameSegment(seg.index, name);
+                renderSpeakerList(listId, sm);
+                renderSrts(containerId, sm, options);
+              }
+            };
+          }
           return {
             html: `<span class="speaker-badge speaker-${ci}" style="cursor:pointer;font-size:11px">${name}</span>`,
             action: () => {
@@ -606,9 +828,10 @@ function renderSrts(containerId, sm, options = {}) {
         });
         items.push({ divider: true });
         items.push({ label: '+ 新建说话人', action: async () => {
-          const newName = await showPrompt('新建说话人', '请输入新说话人名称');
-          if (newName) {
-            sm.renameSegment(seg.index, newName);
+          const result = await showNewSpeakerDialog();
+          if (result) {
+            sm.renameSegment(seg.index, result.name);
+            if (result.color) sm.setColor(result.name, result.color);
             renderSpeakerList(listId, sm);
             renderSrts(containerId, sm, options);
           }
@@ -662,6 +885,24 @@ function showSpeakerDropdown(anchor, items) {
       const div = document.createElement('div');
       div.className = 'dropdown-divider';
       dd.appendChild(div);
+      return;
+    }
+    if (item.colorPicker) {
+      const row = document.createElement('div');
+      row.className = 'dropdown-item dropdown-color-row';
+      row.innerHTML = `<span>颜色</span><input type="color" value="${item.value}" class="dropdown-color-picker">`;
+      const input = row.querySelector('input');
+      input.addEventListener('click', (e) => e.stopPropagation());
+      input.addEventListener('input', (e) => {
+        e.stopPropagation();
+        if (item.onChange) item.onChange(e.target.value);
+      });
+      input.addEventListener('change', (e) => {
+        e.stopPropagation();
+        closeDropdown();
+        if (item.onChange) item.onChange(e.target.value);
+      });
+      dd.appendChild(row);
       return;
     }
     const row = document.createElement('div');
@@ -1046,7 +1287,11 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
   wsOverlay.addEventListener('drop', (e) => {
     e.preventDefault();
     wsOverlay.classList.remove('drag-over');
-    wsInput.files = e.dataTransfer.files;
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/'));
+    if (!files.length) return;
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    wsInput.files = dt.files;
     handleWsFile();
   });
 
@@ -1061,10 +1306,12 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
   wsSrtUpload.addEventListener('drop', (e) => {
     e.preventDefault();
     wsSrtUpload.classList.remove('drag-over');
-    if (e.dataTransfer.files.length) {
-      wsSrtFile.files = e.dataTransfer.files;
-      handleWsSrtFile();
-    }
+    const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.srt'));
+    if (!files.length) return;
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    wsSrtFile.files = dt.files;
+    handleWsSrtFile();
   });
   wsSrtFile.addEventListener('change', handleWsSrtFile);
 
@@ -1113,6 +1360,8 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     // Load audio & draw waveform
     await loadWaveform(data.audio_url);
     document.getElementById('wsStatus').textContent = '视频已就绪，可开始转写';
+    const wsBtn = document.getElementById('wsBtn');
+    if (wsBtn) wsBtn.disabled = false;
   }
 
   async function loadWaveform(url) {
@@ -1137,8 +1386,10 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
       }
       wsPeaks.push(max);
     }
-    drawWaveform();
+    drawWaveform(0);
   }
+
+  let _wsProgress = null;
 
   function drawWaveform(progress) {
     const w = wsCanvas.width, h = wsCanvas.height, mid = h / 2;
@@ -1148,16 +1399,19 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
       if (progress != null && i / wsPeaks.length > progress) {
         wsCtx.fillStyle = '#555';
       } else {
-        wsCtx.fillStyle = '#0000FF';
+        wsCtx.fillStyle = _themeColor;
       }
       wsCtx.fillRect(i, mid - barH, 1, barH * 2);
     }
   }
 
+  _onThemeChange.push(() => drawWaveform(_wsProgress));
+
   // Video timeupdate → waveform progress & active segment
   wsVideo.addEventListener('timeupdate', () => {
     if (!wsVideo.duration) return;
     const pct = wsVideo.currentTime / wsVideo.duration;
+    _wsProgress = pct;
     wsProgress.style.width = (pct * 100) + '%';
     drawWaveform(pct);
 

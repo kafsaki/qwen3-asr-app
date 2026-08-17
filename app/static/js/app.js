@@ -6,6 +6,11 @@ window.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('textarea').forEach(t => t.value = '');
   document.querySelectorAll('.srt-inner').forEach(el => el.innerHTML = '');
   document.querySelectorAll('.speaker-list-panel').forEach(p => p.style.display = 'none');
+  ['singleExportBtn', 'batchExportBtn', 'alignExportBtn', 'wsExportBtn'].forEach(id => setExportEnabled(id, false));
+  ['singleDownloadBtn', 'batchDownloadBtn', 'alignDownloadBtn', 'wsDownloadBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = true;
+  });
 });
 
 // ── Tab Switching ──
@@ -241,6 +246,129 @@ function parseSrtTime(ts) {
   const m = ts.match(/(\d+):(\d+):(\d+)[,.](\d+)/);
   if (!m) return 0;
   return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseInt(m[3]) + parseInt(m[4]) / 1000;
+}
+
+// ── Custom Glass Select ──
+class CustomSelect {
+  constructor(nativeSelect, onChange) {
+    this.native = nativeSelect;
+    this.onChange = onChange;
+    this.wrap = document.createElement('div');
+    this.wrap.className = 'custom-select-wrap';
+    nativeSelect.parentNode.insertBefore(this.wrap, nativeSelect);
+    this.wrap.appendChild(nativeSelect);
+    nativeSelect.style.display = 'none';
+
+    this.trigger = document.createElement('button');
+    this.trigger.className = 'custom-select-trigger';
+    this.trigger.type = 'button';
+    this.wrap.appendChild(this.trigger);
+
+    this.dropdown = document.createElement('div');
+    this.dropdown.className = 'custom-select-dropdown';
+    this.wrap.appendChild(this.dropdown);
+
+    this._buildOptions();
+    this._syncTrigger();
+    // Handle initial value (e.g. browser-restored form state)
+    if (this.onChange) this.onChange(this.native.value);
+
+    this.trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    this._onClickOutside = (e) => {
+      if (!this.wrap.contains(e.target)) this.close();
+    };
+  }
+
+  _buildOptions() {
+    this.dropdown.innerHTML = '';
+    Array.from(this.native.options).forEach(opt => {
+      const div = document.createElement('div');
+      div.className = 'custom-select-option';
+      div.textContent = opt.text;
+      div.addEventListener('click', () => {
+        this.native.value = opt.value;
+        this._syncTrigger();
+        this.close();
+        this.native.dispatchEvent(new Event('change', { bubbles: true }));
+        if (this.onChange) this.onChange(opt.value);
+      });
+      this.dropdown.appendChild(div);
+    });
+  }
+
+  _syncTrigger() {
+    const sel = this.native.options[this.native.selectedIndex];
+    this.trigger.textContent = sel ? sel.text : '';
+    this.dropdown.querySelectorAll('.custom-select-option').forEach(d => d.classList.remove('selected'));
+    const idx = this.native.selectedIndex;
+    if (idx >= 0) this.dropdown.children[idx]?.classList.add('selected');
+  }
+
+  toggle() {
+    if (this.dropdown.classList.contains('open')) {
+      this.close();
+    } else {
+      this.open();
+    }
+  }
+
+  open() {
+    closeAllCustomSelects();
+    this.dropdown.classList.add('open');
+    document.addEventListener('click', this._onClickOutside);
+  }
+
+  close() {
+    this.dropdown.classList.remove('open');
+    document.removeEventListener('click', this._onClickOutside);
+  }
+
+  rebuildOptions() {
+    this._buildOptions();
+    this._syncTrigger();
+  }
+}
+
+const _customSelects = [];
+function closeAllCustomSelects() {
+  _customSelects.forEach(cs => cs.close());
+}
+document.addEventListener('click', closeAllCustomSelects);
+
+function initCustomSelects() {
+  // Language selects
+  ['singleLang', 'batchLang', 'alignLang', 'wsLang'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) _customSelects.push(new CustomSelect(el));
+  });
+  // Punc selects
+  ['singlePunc', 'batchPunc', 'wsPunc'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      _customSelects.push(new CustomSelect(el, (val) => {
+        const customId = id.replace('Punc', 'PuncCustom');
+        const customEl = document.getElementById(customId);
+        if (customEl) customEl.style.display = val === '__custom__' ? '' : 'none';
+      }));
+    }
+  });
+  // Batch file select
+  const batchFileSelect = document.getElementById('batchFileSelect');
+  if (batchFileSelect) {
+    window._batchFileCustomSelect = new CustomSelect(batchFileSelect);
+    _customSelects.push(window._batchFileCustomSelect);
+  }
+}
+
+// Init on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCustomSelects);
+} else {
+  initCustomSelects();
 }
 
 // ── Speaker Manager Factory ──
@@ -672,6 +800,7 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
   document.getElementById('batchDownloadBtn').disabled = true;
   setExportEnabled('batchExportBtn', false);
   currentBatchSpeakerMgr = createSpeakerManager();
+  if (window._batchFileCustomSelect) window._batchFileCustomSelect.rebuildOptions();
 
   try {
     const form = new FormData();
@@ -717,6 +846,7 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
           resultMap[r.file_id] = r;
         }
       });
+      if (window._batchFileCustomSelect) window._batchFileCustomSelect.rebuildOptions();
 
       // 下拉切换预览
       const batchOutFolder = data.output_folder;

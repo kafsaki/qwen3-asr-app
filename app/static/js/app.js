@@ -243,113 +243,135 @@ function parseSrtTime(ts) {
   return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseInt(m[3]) + parseInt(m[4]) / 1000;
 }
 
-// ── Speaker Manager ──
-const SpeakerManager = {
-  segments: [],
-  speakers: new Map(), // displayName -> { originalName, count, colorIndex }
-  _colorIdx: 0,
-  _colorMap: new Map(), // originalName -> colorIndex
+// ── Speaker Manager Factory ──
+function createSpeakerManager() {
+  const sm = {
+    segments: [],
+    speakers: new Map(), // displayName -> { originalName, count, colorIndex }
+    _colorIdx: 0,
+    _colorMap: new Map(), // originalName -> colorIndex
 
-  reset() {
-    this.segments = [];
-    this.speakers = new Map();
-    this._colorIdx = 0;
-    this._colorMap = new Map();
-  },
+    reset() {
+      this.segments = [];
+      this.speakers = new Map();
+      this._colorIdx = 0;
+      this._colorMap = new Map();
+    },
 
-  parse(srt) {
-    this.reset();
-    const blocks = srt.split(/\n\s*\n/);
-    blocks.forEach(block => {
-      const lines = block.trim().split('\n');
-      if (lines.length < 2) return;
-      const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
-      if (!timeMatch) return;
+    parse(srt) {
+      this.reset();
+      const blocks = srt.split(/\n\s*\n/);
+      blocks.forEach(block => {
+        const lines = block.trim().split('\n');
+        if (lines.length < 2) return;
+        const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
+        if (!timeMatch) return;
 
-      const rawText = lines.slice(2).join('\n').trim();
-      const speakerMatch = rawText.match(/\[角色\s+([^\]]+)\]\s*/);
-      let speaker = null, text = rawText;
-      if (speakerMatch) {
-        speaker = speakerMatch[1];
-        text = rawText.slice(speakerMatch[0].length);
-      }
-
-      const seg = {
-        index: this.segments.length,
-        startTime: timeMatch[1], endTime: timeMatch[2],
-        startSec: parseSrtTime(timeMatch[1]), endSec: parseSrtTime(timeMatch[2]),
-        speaker, speakerDisplay: speaker,
-        text, rawText
-      };
-      this.segments.push(seg);
-
-      if (speaker) {
-        if (!this.speakers.has(speaker)) {
-          if (!this._colorMap.has(speaker)) this._colorMap.set(speaker, this._colorIdx++);
-          this.speakers.set(speaker, { originalName: speaker, displayName: speaker, count: 0, colorIndex: this._colorMap.get(speaker) });
+        const rawText = lines.slice(2).join('\n').trim();
+        const speakerMatch = rawText.match(/\[角色\s+([^\]]+)\]\s*/);
+        let speaker = null, text = rawText;
+        if (speakerMatch) {
+          speaker = speakerMatch[1];
+          text = rawText.slice(speakerMatch[0].length);
         }
-        this.speakers.get(speaker).count++;
-      }
-    });
-    return this.segments;
-  },
 
-  renameGlobal(oldName, newName) {
-    if (!this.speakers.has(oldName) || oldName === newName) return;
-    const info = this.speakers.get(oldName);
-    if (this.speakers.has(newName)) {
-      this.speakers.get(newName).count += info.count;
-      this.speakers.delete(oldName);
-    } else {
-      info.displayName = newName;
-      this.speakers.set(newName, info);
-      this.speakers.delete(oldName);
-    }
-    this.segments.forEach(seg => {
-      if (seg.speakerDisplay === oldName) seg.speakerDisplay = newName;
-    });
-  },
+        const seg = {
+          index: this.segments.length,
+          startTime: timeMatch[1], endTime: timeMatch[2],
+          startSec: parseSrtTime(timeMatch[1]), endSec: parseSrtTime(timeMatch[2]),
+          speaker, speakerDisplay: speaker,
+          text, rawText
+        };
+        this.segments.push(seg);
 
-  renameSegment(segIdx, newName) {
-    const seg = this.segments[segIdx];
-    if (!seg) return;
-    const oldName = seg.speakerDisplay;
-    if (oldName) {
+        if (speaker) {
+          if (!this.speakers.has(speaker)) {
+            if (!this._colorMap.has(speaker)) this._colorMap.set(speaker, this._colorIdx++);
+            this.speakers.set(speaker, { originalName: speaker, displayName: speaker, count: 0, colorIndex: this._colorMap.get(speaker) });
+          }
+          this.speakers.get(speaker).count++;
+        }
+      });
+      return this.segments;
+    },
+
+    renameGlobal(oldName, newName) {
+      if (!this.speakers.has(oldName) || oldName === newName) return;
       const info = this.speakers.get(oldName);
-      if (info) info.count--;
-    }
-    if (newName) {
-      seg.speaker = newName; seg.speakerDisplay = newName;
-      if (!this.speakers.has(newName)) {
-        this.speakers.set(newName, { originalName: newName, displayName: newName, count: 0, colorIndex: this._colorIdx++ });
+      if (this.speakers.has(newName)) {
+        this.speakers.get(newName).count += info.count;
+        this.speakers.delete(oldName);
+      } else {
+        info.displayName = newName;
+        this.speakers.set(newName, info);
+        this.speakers.delete(oldName);
       }
-      this.speakers.get(newName).count++;
-    } else {
-      seg.speaker = null; seg.speakerDisplay = null;
+      this.segments.forEach(seg => {
+        if (seg.speakerDisplay === oldName) seg.speakerDisplay = newName;
+      });
+    },
+
+    renameSegment(segIdx, newName) {
+      const seg = this.segments[segIdx];
+      if (!seg) return;
+      const oldName = seg.speakerDisplay;
+      if (oldName) {
+        const info = this.speakers.get(oldName);
+        if (info) info.count--;
+      }
+      if (newName) {
+        seg.speaker = newName; seg.speakerDisplay = newName;
+        if (!this.speakers.has(newName)) {
+          this.speakers.set(newName, { originalName: newName, displayName: newName, count: 0, colorIndex: this._colorIdx++ });
+        }
+        this.speakers.get(newName).count++;
+      } else {
+        seg.speaker = null; seg.speakerDisplay = null;
+      }
+    },
+
+    deleteSpeaker(name) {
+      const info = this.speakers.get(name);
+      if (!info || info.count > 0) return false;
+      this.speakers.delete(name);
+      return true;
+    },
+
+    getNames() { return Array.from(this.speakers.keys()); },
+
+    buildSrt() {
+      const lines = [];
+      this.segments.forEach((seg, i) => {
+        lines.push(String(i + 1));
+        lines.push(`${seg.startTime} --> ${seg.endTime}`);
+        let text = seg.text;
+        if (seg.speakerDisplay) text = `[角色 ${seg.speakerDisplay}] ${text}`;
+        lines.push(text);
+        lines.push('');
+      });
+      return lines.join('\n').trim() + '\n';
     }
-  },
+  };
+  return sm;
+}
 
-  deleteSpeaker(name) {
-    const info = this.speakers.get(name);
-    if (!info || info.count > 0) return false;
-    this.speakers.delete(name);
-    return true;
-  },
-
-  getNames() { return Array.from(this.speakers.keys()); }
-};
+// ── Per-tab SpeakerManager instances ──
+const singleSpeakerMgr = createSpeakerManager();
+const alignSpeakerMgr = createSpeakerManager();
+const wsSpeakerMgr = createSpeakerManager();
+let currentBatchSpeakerMgr = createSpeakerManager(); // batch: current file's instance
 
 // ── Speaker UI Rendering ──
-function renderSpeakerList(panelId) {
+function renderSpeakerList(panelId, sm) {
   const panel = document.getElementById(panelId);
   if (!panel) return;
   panel.querySelectorAll('.speaker-item').forEach(el => el.remove());
-  if (SpeakerManager.speakers.size === 0) {
+  if (sm.speakers.size === 0) {
     panel.style.display = 'none';
     return;
   }
   panel.style.display = '';
-  SpeakerManager.speakers.forEach((info, name) => {
+  sm.speakers.forEach((info, name) => {
     const el = document.createElement('span');
     el.className = `speaker-item speaker-${info.colorIndex % 8}`;
     if (info.count === 0) el.classList.add('can-delete');
@@ -359,10 +381,10 @@ function renderSpeakerList(panelId) {
       if (e.target.classList.contains('speaker-del')) {
         const ok = await showConfirm('删除说话人', `确定删除说话人 "${name}"？`, true);
         if (!ok) return;
-        SpeakerManager.deleteSpeaker(name);
-        renderSpeakerList(panelId);
+        sm.deleteSpeaker(name);
+        renderSpeakerList(panelId, sm);
         const srtMap = { singleSpeakerList: 'singleSrt', batchSpeakerList: 'batchSrt', alignSpeakerList: 'alignSrt', wsSpeakerList: 'wsSrt' };
-        renderSrts(srtMap[panelId] || panelId.replace('SpeakerList', 'Srt'));
+        renderSrts(srtMap[panelId] || panelId.replace('SpeakerList', 'Srt'), sm);
         return;
       }
       // Toggle: close if already open for this item
@@ -373,17 +395,17 @@ function renderSpeakerList(panelId) {
         { label: '重命名', action: async () => {
           const newName = await showPrompt('重命名说话人', '请输入新名称', name);
           if (newName && newName !== name) {
-            SpeakerManager.renameGlobal(name, newName);
-            renderSpeakerList(panelId);
-            renderSrts(srtId);
+            sm.renameGlobal(name, newName);
+            renderSpeakerList(panelId, sm);
+            renderSrts(srtId, sm);
           }
         }},
         ...(info.count === 0 ? [{ label: '删除', action: async () => {
           const ok = await showConfirm('删除说话人', `确定删除说话人 "${name}"？`, true);
           if (!ok) return;
-          SpeakerManager.deleteSpeaker(name);
-          renderSpeakerList(panelId);
-          renderSrts(srtId);
+          sm.deleteSpeaker(name);
+          renderSpeakerList(panelId, sm);
+          renderSrts(srtId, sm);
         }}] : [])
       ]);
     });
@@ -391,7 +413,7 @@ function renderSpeakerList(panelId) {
   });
 }
 
-function renderSrts(containerId, options = {}) {
+function renderSrts(containerId, sm, options = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const { clickable = false, videoEl = null, onActiveChange = null } = options;
@@ -400,7 +422,7 @@ function renderSrts(containerId, options = {}) {
   inner.innerHTML = '';
 
   let activeEl = null;
-  SpeakerManager.segments.forEach(seg => {
+  sm.segments.forEach(seg => {
     const div = document.createElement('div');
     div.className = 'srt-segment';
     div.dataset.start = seg.startSec;
@@ -408,7 +430,7 @@ function renderSrts(containerId, options = {}) {
 
     let html = `<div class="seg-header">`;
     if (seg.speakerDisplay) {
-      const info = SpeakerManager.speakers.get(seg.speakerDisplay);
+      const info = sm.speakers.get(seg.speakerDisplay);
       const ci = info ? info.colorIndex % 8 : 0;
       html += `<span class="speaker-badge speaker-${ci}" data-seg="${seg.index}">${seg.speakerDisplay}<span class="badge-edit">▼</span></span>`;
     }
@@ -438,16 +460,16 @@ function renderSrts(containerId, options = {}) {
         if (_dropdownAnchor === badge) { closeDropdown(); return; }
         const listMap = { singleSrt: 'singleSpeakerList', batchSrt: 'batchSpeakerList', alignSrt: 'alignSpeakerList', wsSrt: 'wsSpeakerList' };
         const listId = listMap[containerId] || containerId.replace('Srt', 'SpeakerList');
-        const names = SpeakerManager.getNames();
+        const names = sm.getNames();
         const items = names.map(name => {
-          const info = SpeakerManager.speakers.get(name);
+          const info = sm.speakers.get(name);
           const ci = info ? info.colorIndex % 8 : 0;
           return {
             html: `<span class="speaker-badge speaker-${ci}" style="cursor:pointer;font-size:11px">${name}</span>`,
             action: () => {
-              SpeakerManager.renameSegment(seg.index, name);
-              renderSpeakerList(listId);
-              renderSrts(containerId, options);
+              sm.renameSegment(seg.index, name);
+              renderSpeakerList(listId, sm);
+              renderSrts(containerId, sm, options);
             }
           };
         });
@@ -455,9 +477,9 @@ function renderSrts(containerId, options = {}) {
         items.push({ label: '+ 新建说话人', action: async () => {
           const newName = await showPrompt('新建说话人', '请输入新说话人名称');
           if (newName) {
-            SpeakerManager.renameSegment(seg.index, newName);
-            renderSpeakerList(listId);
-            renderSrts(containerId, options);
+            sm.renameSegment(seg.index, newName);
+            renderSpeakerList(listId, sm);
+            renderSrts(containerId, sm, options);
           }
         }});
         showSpeakerDropdown(badge, items);
@@ -544,6 +566,30 @@ function showSpeakerDropdown(anchor, items) {
   repositionDropdown();
 }
 
+// ── Export SRT ──
+function exportSrt(sm) {
+  if (!sm.segments.length) return;
+  const srt = sm.buildSrt();
+  const blob = new Blob([srt], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'exported.srt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function setExportEnabled(btnId, enabled) {
+  const btn = document.getElementById(btnId);
+  if (btn) btn.disabled = !enabled;
+}
+
+// Export button click handlers
+document.getElementById('singleExportBtn')?.addEventListener('click', () => exportSrt(singleSpeakerMgr));
+document.getElementById('batchExportBtn')?.addEventListener('click', () => exportSrt(currentBatchSpeakerMgr));
+document.getElementById('alignExportBtn')?.addEventListener('click', () => exportSrt(alignSpeakerMgr));
+document.getElementById('wsExportBtn')?.addEventListener('click', () => exportSrt(wsSpeakerMgr));
+
 // ── Single Transcribe ──
 document.getElementById('singleBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('singleFile');
@@ -559,7 +605,8 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
   document.getElementById('singleText').value = '';
   document.querySelector('#singleSrt .srt-inner').innerHTML = '';
   document.getElementById('singleSpeakerList').style.display = 'none';
-  document.getElementById('singleDownloadArea').style.display = 'none';
+  document.getElementById('singleDownloadBtn').disabled = true;
+  setExportEnabled('singleExportBtn', false);
 
   try {
     const form = new FormData();
@@ -577,9 +624,10 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
       document.getElementById('singleStatus').textContent = '转写完成';
       document.getElementById('singleText').value = data.full_text || '';
       fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
-        SpeakerManager.parse(srt);
-        renderSpeakerList('singleSpeakerList');
-        renderSrts('singleSrt');
+        singleSpeakerMgr.parse(srt);
+        renderSpeakerList('singleSpeakerList', singleSpeakerMgr);
+        renderSrts('singleSrt', singleSpeakerMgr);
+        setExportEnabled('singleExportBtn', true);
       });
       if (data.output_folder) {
         // 从 output_folder 提取 UUID（如 a1b2c3d4_single → a1b2c3d4）
@@ -587,8 +635,9 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
         const origName = fileInput.files[0].name;
         document.getElementById('singleFileName').innerHTML =
           `${origName} <span class="file-id">(${fileId})</span>`;
-        document.getElementById('singleDownloadArea').style.display = '';
-        document.getElementById('singleDownloadBtn').onclick = () => {
+        const btn = document.getElementById('singleDownloadBtn');
+        btn.disabled = false;
+        btn.onclick = () => {
           window.open(API_BASE + '/api/download/' + data.output_folder, '_blank');
         };
       }
@@ -620,7 +669,9 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
   document.querySelector('#batchSrt .srt-inner').innerHTML = '';
   document.getElementById('batchSpeakerList').style.display = 'none';
   document.getElementById('batchFileSelect').innerHTML = '<option value="">-</option>';
-  document.getElementById('batchDownloadArea').style.display = 'none';
+  document.getElementById('batchDownloadBtn').disabled = true;
+  setExportEnabled('batchExportBtn', false);
+  currentBatchSpeakerMgr = createSpeakerManager();
 
   try {
     const form = new FormData();
@@ -648,7 +699,7 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
     document.getElementById('batchLog').textContent = logLines.join('\n');
 
     if (data.output_folder) {
-      document.getElementById('batchDownloadArea').style.display = '';
+      document.getElementById('batchDownloadBtn').disabled = false;
 
       // 填充下拉列表并存储结果
       const select = document.getElementById('batchFileSelect');
@@ -674,14 +725,18 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
         if (r) {
           document.getElementById('batchText').value = r.full_text || '';
           fetchSrtContent(batchOutFolder, `${r.file_id}_single/全角色.srt`).then(srt => {
-            SpeakerManager.parse(srt);
-            renderSpeakerList('batchSpeakerList');
-            renderSrts('batchSrt');
+            currentBatchSpeakerMgr = createSpeakerManager();
+            currentBatchSpeakerMgr.parse(srt);
+            renderSpeakerList('batchSpeakerList', currentBatchSpeakerMgr);
+            renderSrts('batchSrt', currentBatchSpeakerMgr);
+            setExportEnabled('batchExportBtn', true);
           });
         } else {
           document.getElementById('batchText').value = '';
           document.querySelector('#batchSrt .srt-inner').innerHTML = '';
           document.getElementById('batchSpeakerList').style.display = 'none';
+          currentBatchSpeakerMgr = createSpeakerManager();
+          setExportEnabled('batchExportBtn', false);
         }
       };
 
@@ -750,7 +805,8 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
   document.getElementById('alignStatus').innerHTML = '<span class="spinner"></span>正在对齐...';
   document.querySelector('#alignSrt .srt-inner').innerHTML = '';
   document.getElementById('alignSpeakerList').style.display = 'none';
-  document.getElementById('alignDownloadArea').style.display = 'none';
+  document.getElementById('alignDownloadBtn').disabled = true;
+  setExportEnabled('alignExportBtn', false);
 
   try {
     const form = new FormData();
@@ -764,17 +820,19 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     if (data.status === 'success') {
       document.getElementById('alignStatus').textContent = '对齐完成';
       fetchSrtContent(data.output_folder, 'align_result.srt').then(srt => {
-        SpeakerManager.parse(srt);
-        renderSpeakerList('alignSpeakerList');
-        renderSrts('alignSrt');
+        alignSpeakerMgr.parse(srt);
+        renderSpeakerList('alignSpeakerList', alignSpeakerMgr);
+        renderSrts('alignSrt', alignSpeakerMgr);
+        setExportEnabled('alignExportBtn', true);
       });
       if (data.output_folder) {
         const fileId = data.output_folder.split('_')[0];
         const origName = fileInput.files[0].name;
         document.getElementById('alignFileName').innerHTML =
           `${origName} <span class="file-id">(${fileId})</span>`;
-        document.getElementById('alignDownloadArea').style.display = '';
-        document.getElementById('alignDownloadBtn').onclick = () => {
+        const btn = document.getElementById('alignDownloadBtn');
+        btn.disabled = false;
+        btn.onclick = () => {
           window.open(API_BASE + '/api/download/' + data.output_folder, '_blank');
         };
       }
@@ -881,10 +939,11 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     const file = wsSrtFile.files[0];
     const reader = new FileReader();
     reader.onload = () => {
-      SpeakerManager.parse(reader.result);
-      renderSpeakerList('wsSpeakerList');
-      renderSrts('wsSrt', { clickable: true, videoEl: wsVideo, onActiveChange: (el) => { wsActiveSeg = el; } });
+      wsSpeakerMgr.parse(reader.result);
+      renderSpeakerList('wsSpeakerList', wsSpeakerMgr);
+      renderSrts('wsSrt', wsSpeakerMgr, { clickable: true, videoEl: wsVideo, onActiveChange: (el) => { wsActiveSeg = el; } });
       showWsSrtSegments();
+      setExportEnabled('wsExportBtn', true);
     };
     reader.readAsText(file);
   }
@@ -971,7 +1030,7 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     // Highlight active segment
     const segs = document.querySelectorAll('#wsSrt .srt-segment');
     let current = null;
-    SpeakerManager.segments.forEach((seg, i) => {
+    wsSpeakerMgr.segments.forEach((seg, i) => {
       if (wsVideo.currentTime >= seg.startSec && wsVideo.currentTime < seg.endSec) {
         current = segs[i];
       }
@@ -1020,7 +1079,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     document.getElementById('wsText').value = '';
     document.querySelector('#wsSrt .srt-inner').innerHTML = '';
     document.getElementById('wsSpeakerList').style.display = 'none';
-    document.getElementById('wsDownloadArea').style.display = 'none';
+    document.getElementById('wsDownloadBtn').disabled = true;
+    setExportEnabled('wsExportBtn', false);
+    wsSpeakerMgr.reset();
 
     try {
       // Fetch extracted audio blob
@@ -1042,14 +1103,16 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
         document.getElementById('wsStatus').textContent = '转写完成';
         document.getElementById('wsText').value = data.full_text || '';
         fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
-          SpeakerManager.parse(srt);
-          renderSpeakerList('wsSpeakerList');
-          renderSrts('wsSrt', { clickable: true, videoEl: wsVideo, onActiveChange: (el) => { wsActiveSeg = el; } });
+          wsSpeakerMgr.parse(srt);
+          renderSpeakerList('wsSpeakerList', wsSpeakerMgr);
+          renderSrts('wsSrt', wsSpeakerMgr, { clickable: true, videoEl: wsVideo, onActiveChange: (el) => { wsActiveSeg = el; } });
           showWsSrtSegments();
+          setExportEnabled('wsExportBtn', true);
         });
         if (data.output_folder && wsFileId) {
-          document.getElementById('wsDownloadArea').style.display = '';
-          document.getElementById('wsDownloadBtn').onclick = () => {
+          const wsDlBtn = document.getElementById('wsDownloadBtn');
+          wsDlBtn.disabled = false;
+          wsDlBtn.onclick = () => {
             window.open('/api/download/' + data.output_folder, '_blank');
           };
         }

@@ -121,10 +121,11 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
 }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-hover); }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary:disabled { background: #3a3a50; color: #777; cursor: not-allowed; }
 
 .btn-success { background: var(--success); color: #fff; }
 .btn-success:hover { background: var(--success-hover); }
+.btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-remove { background: none; border: none; color: var(--danger); font-size: 18px; cursor: pointer; padding: 0 4px; }
 

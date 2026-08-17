@@ -114,7 +114,7 @@ function setupUpload(areaId, inputId, previewId, nameId, removeId) {
   area.addEventListener('click', (e) => {
     if (e.target !== removeBtn) input.click();
   });
-  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#6366f1'; });
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#0000FF'; });
   area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
   area.addEventListener('drop', (e) => {
     e.preventDefault();
@@ -163,7 +163,7 @@ function setupBatchUpload() {
     if (!e.target.closest('.btn-remove')) input.click();
   });
 
-  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#6366f1'; });
+  area.addEventListener('dragover', (e) => { e.preventDefault(); area.style.borderColor = '#0000FF'; });
   area.addEventListener('dragleave', () => { area.style.borderColor = ''; });
 
   area.addEventListener('drop', (e) => {
@@ -1031,7 +1031,7 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
   function drawEmptyWaveform() {
     const w = wsCanvas.width, h = wsCanvas.height, mid = h / 2;
     wsCtx.clearRect(0, 0, w, h);
-    wsCtx.strokeStyle = '#3a3a55';
+    wsCtx.strokeStyle = '#555';
     wsCtx.lineWidth = 1;
     wsCtx.beginPath();
     wsCtx.moveTo(0, mid);
@@ -1146,9 +1146,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     for (let i = 0; i < wsPeaks.length; i++) {
       const barH = wsPeaks[i] * mid * 0.9;
       if (progress != null && i / wsPeaks.length > progress) {
-        wsCtx.fillStyle = '#3a3a55';
+        wsCtx.fillStyle = '#555';
       } else {
-        wsCtx.fillStyle = '#6366f1';
+        wsCtx.fillStyle = '#0000FF';
       }
       wsCtx.fillRect(i, mid - barH, 1, barH * 2);
     }

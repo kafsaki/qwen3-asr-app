@@ -127,6 +127,65 @@ function showPrompt(title, body, defaultValue = '') {
   return showDialog(title, body, { input: true, defaultValue, confirmText: '确定', cancelText: '取消' });
 }
 
+function showRenameDialog(title, defaultValue, existingNames) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog-box">
+        <div class="dialog-title">${title}</div>
+        <div class="dialog-body">请输入新名称</div>
+        <input class="dialog-input" type="text" value="${defaultValue}" autofocus>
+        <div class="dialog-error" id="renameError" style="display:none"></div>
+        <div class="dialog-actions">
+          <button class="dialog-btn" data-action="cancel">取消</button>
+          <button class="dialog-btn primary" id="renameConfirm">确定</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const inputEl = overlay.querySelector('.dialog-input');
+    const errorEl = overlay.querySelector('#renameError');
+    const confirmBtn = overlay.querySelector('#renameConfirm');
+
+    function tryConfirm() {
+      const name = inputEl.value.trim();
+      if (!name) {
+        errorEl.textContent = '说话人名称不能为空';
+        errorEl.style.display = 'block';
+        inputEl.focus();
+        return;
+      }
+      if (existingNames.has(name) && name !== defaultValue) {
+        errorEl.textContent = `说话人 "${name}" 已存在`;
+        errorEl.style.display = 'block';
+        inputEl.focus();
+        return;
+      }
+      resolve(name);
+    }
+
+    inputEl.focus();
+    inputEl.select();
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') tryConfirm();
+      if (e.key === 'Escape') resolve(null);
+    });
+
+    confirmBtn.addEventListener('click', tryConfirm);
+    overlay.addEventListener('click', e => {
+      if (e.target.dataset.action === 'cancel') resolve(null);
+      if (e.target === overlay) resolve(null);
+    });
+    overlay.addEventListener('keydown', e => {
+      if (e.key === 'Escape') resolve(null);
+    });
+  }).finally(() => {
+    const overlay = document.querySelector('.dialog-overlay');
+    if (overlay) overlay.remove();
+  });
+}
+
 function showNewSpeakerDialog() {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
@@ -136,37 +195,43 @@ function showNewSpeakerDialog() {
         <div class="dialog-title">新建说话人</div>
         <div class="dialog-body">请输入新说话人名称</div>
         <input class="dialog-input" type="text" placeholder="说话人名称" autofocus>
+        <div class="dialog-error" id="newSpeakerError" style="display:none"></div>
         <div class="color-palette" id="newSpeakerPalette"></div>
         <div class="dialog-actions">
           <button class="dialog-btn" data-action="cancel">取消</button>
-          <button class="dialog-btn primary" data-action="confirm">确定</button>
+          <button class="dialog-btn primary" id="newSpeakerConfirm">确定</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
 
     const inputEl = overlay.querySelector('.dialog-input');
     const paletteEl = overlay.querySelector('#newSpeakerPalette');
+    const errorEl = overlay.querySelector('#newSpeakerError');
+    const confirmBtn = overlay.querySelector('#newSpeakerConfirm');
     let selectedColor = _themeColor;
 
     renderColorPalette(paletteEl, selectedColor, (color) => { selectedColor = color; });
 
-    inputEl.focus();
-    inputEl.select();
-    inputEl.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        const name = inputEl.value.trim();
-        resolve(name ? { name, color: selectedColor } : null);
+    function tryConfirm() {
+      const name = inputEl.value.trim();
+      if (!name) {
+        errorEl.textContent = '说话人名称不能为空';
+        errorEl.style.display = 'block';
+        inputEl.focus();
+        return;
       }
+      resolve({ name, color: selectedColor });
+    }
+
+    inputEl.focus();
+    inputEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') tryConfirm();
       if (e.key === 'Escape') resolve(null);
     });
 
+    confirmBtn.addEventListener('click', tryConfirm);
     overlay.addEventListener('click', e => {
-      const action = e.target.dataset.action;
-      if (action === 'confirm') {
-        const name = inputEl.value.trim();
-        resolve(name ? { name, color: selectedColor } : null);
-      }
-      if (action === 'cancel') resolve(null);
+      if (e.target.dataset.action === 'cancel') resolve(null);
       if (e.target === overlay) resolve(null);
     });
     overlay.addEventListener('keydown', e => {
@@ -720,7 +785,7 @@ function renderSpeakerList(panelId, sm) {
       const currentColor = customColor || '#0000FF';
       showSpeakerDropdown(el, [
         { label: '重命名', action: async () => {
-          const newName = await showPrompt('重命名说话人', '请输入新名称', name);
+          const newName = await showRenameDialog('重命名说话人', name, sm.speakers);
           if (newName && newName !== name) {
             sm.renameGlobal(name, newName);
             renderSpeakerList(panelId, sm);

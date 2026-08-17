@@ -444,6 +444,9 @@ input[type="range"] { width: 100%; accent-color: var(--primary); }
   font-size: 14px; font-family: inherit; outline: none; transition: border 0.2s;
 }
 .dialog-input:focus { border-color: var(--primary); }
+.dialog-error {
+  color: #ff5252; font-size: 12px; margin: -14px 0 14px 0; display: none;
+}
 .dialog-actions {
   display: flex; gap: 10px; justify-content: flex-end;
 }

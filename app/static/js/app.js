@@ -4,10 +4,8 @@ const API_BASE = '';
 // 页面刷新时清空浏览器可能恢复的表单内容
 window.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('textarea').forEach(t => t.value = '');
-  document.getElementById('singleSrt').textContent = '';
-  document.getElementById('batchSrt').textContent = '';
-  document.getElementById('alignSrt').textContent = '';
-  document.getElementById('wsSrt').textContent = '';
+  document.querySelectorAll('.srt-inner').forEach(el => el.innerHTML = '');
+  document.querySelectorAll('.speaker-list-panel').forEach(p => p.style.display = 'none');
 });
 
 // ── Tab Switching ──
@@ -20,7 +18,56 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// ── Backend Status Check ──
+// ── Custom Dialog (replaces browser prompt/confirm) ──
+function showDialog(title, body, options = {}) {
+  const { input = false, defaultValue = '', confirmText = '确定', cancelText = '取消', danger = false } = options;
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.innerHTML = `
+      <div class="dialog-box">
+        <div class="dialog-title">${title}</div>
+        <div class="dialog-body">${body}</div>
+        ${input ? `<input class="dialog-input" type="text" value="${defaultValue}" autofocus>` : ''}
+        <div class="dialog-actions">
+          <button class="dialog-btn" data-action="cancel">${cancelText}</button>
+          <button class="dialog-btn ${danger ? 'danger' : 'primary'}" data-action="confirm">${confirmText}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const inputEl = overlay.querySelector('.dialog-input');
+    if (inputEl) {
+      inputEl.focus();
+      inputEl.select();
+      inputEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') resolve(input ? inputEl.value.trim() : true);
+        if (e.key === 'Escape') resolve(input ? null : false);
+      });
+    }
+
+    overlay.addEventListener('click', e => {
+      const action = e.target.dataset.action;
+      if (action === 'confirm') resolve(input ? inputEl.value.trim() : true);
+      if (action === 'cancel') resolve(input ? null : false);
+      if (e.target === overlay) resolve(input ? null : false);
+    });
+    overlay.addEventListener('keydown', e => {
+      if (e.key === 'Escape') resolve(input ? null : false);
+    });
+  }).finally(() => {
+    const overlay = document.querySelector('.dialog-overlay');
+    if (overlay) overlay.remove();
+  });
+}
+
+function showConfirm(title, body, danger = false) {
+  return showDialog(title, body, { confirmText: '确定', cancelText: '取消', danger });
+}
+
+function showPrompt(title, body, defaultValue = '') {
+  return showDialog(title, body, { input: true, defaultValue, confirmText: '确定', cancelText: '取消' });
+}
 async function checkBackend() {
   try {
     const resp = await fetch(API_BASE + '/api/status');
@@ -189,6 +236,314 @@ function getPuncPattern(selectId, customId) {
 setupPuncSelect('singlePunc', 'singlePuncCustom');
 setupPuncSelect('batchPunc', 'batchPuncCustom');
 
+// ── SRT Time Parser ──
+function parseSrtTime(ts) {
+  const m = ts.match(/(\d+):(\d+):(\d+)[,.](\d+)/);
+  if (!m) return 0;
+  return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseInt(m[3]) + parseInt(m[4]) / 1000;
+}
+
+// ── Speaker Manager ──
+const SpeakerManager = {
+  segments: [],
+  speakers: new Map(), // displayName -> { originalName, count, colorIndex }
+  _colorIdx: 0,
+  _colorMap: new Map(), // originalName -> colorIndex
+
+  reset() {
+    this.segments = [];
+    this.speakers = new Map();
+    this._colorIdx = 0;
+    this._colorMap = new Map();
+  },
+
+  parse(srt) {
+    this.reset();
+    const blocks = srt.split(/\n\s*\n/);
+    blocks.forEach(block => {
+      const lines = block.trim().split('\n');
+      if (lines.length < 2) return;
+      const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
+      if (!timeMatch) return;
+
+      const rawText = lines.slice(2).join('\n').trim();
+      const speakerMatch = rawText.match(/\[角色\s+([^\]]+)\]\s*/);
+      let speaker = null, text = rawText;
+      if (speakerMatch) {
+        speaker = speakerMatch[1];
+        text = rawText.slice(speakerMatch[0].length);
+      }
+
+      const seg = {
+        index: this.segments.length,
+        startTime: timeMatch[1], endTime: timeMatch[2],
+        startSec: parseSrtTime(timeMatch[1]), endSec: parseSrtTime(timeMatch[2]),
+        speaker, speakerDisplay: speaker,
+        text, rawText
+      };
+      this.segments.push(seg);
+
+      if (speaker) {
+        if (!this.speakers.has(speaker)) {
+          if (!this._colorMap.has(speaker)) this._colorMap.set(speaker, this._colorIdx++);
+          this.speakers.set(speaker, { originalName: speaker, displayName: speaker, count: 0, colorIndex: this._colorMap.get(speaker) });
+        }
+        this.speakers.get(speaker).count++;
+      }
+    });
+    return this.segments;
+  },
+
+  renameGlobal(oldName, newName) {
+    if (!this.speakers.has(oldName) || oldName === newName) return;
+    const info = this.speakers.get(oldName);
+    if (this.speakers.has(newName)) {
+      this.speakers.get(newName).count += info.count;
+      this.speakers.delete(oldName);
+    } else {
+      info.displayName = newName;
+      this.speakers.set(newName, info);
+      this.speakers.delete(oldName);
+    }
+    this.segments.forEach(seg => {
+      if (seg.speakerDisplay === oldName) seg.speakerDisplay = newName;
+    });
+  },
+
+  renameSegment(segIdx, newName) {
+    const seg = this.segments[segIdx];
+    if (!seg) return;
+    const oldName = seg.speakerDisplay;
+    if (oldName) {
+      const info = this.speakers.get(oldName);
+      if (info) info.count--;
+    }
+    if (newName) {
+      seg.speaker = newName; seg.speakerDisplay = newName;
+      if (!this.speakers.has(newName)) {
+        this.speakers.set(newName, { originalName: newName, displayName: newName, count: 0, colorIndex: this._colorIdx++ });
+      }
+      this.speakers.get(newName).count++;
+    } else {
+      seg.speaker = null; seg.speakerDisplay = null;
+    }
+  },
+
+  deleteSpeaker(name) {
+    const info = this.speakers.get(name);
+    if (!info || info.count > 0) return false;
+    this.speakers.delete(name);
+    return true;
+  },
+
+  getNames() { return Array.from(this.speakers.keys()); }
+};
+
+// ── Speaker UI Rendering ──
+function renderSpeakerList(panelId) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.querySelectorAll('.speaker-item').forEach(el => el.remove());
+  if (SpeakerManager.speakers.size === 0) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  SpeakerManager.speakers.forEach((info, name) => {
+    const el = document.createElement('span');
+    el.className = `speaker-item speaker-${info.colorIndex % 8}`;
+    if (info.count === 0) el.classList.add('can-delete');
+    el.innerHTML = `${info.displayName}<span class="speaker-count">${info.count}</span>${info.count === 0 ? '<span class="speaker-del">×</span>' : ''}`;
+    el.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (e.target.classList.contains('speaker-del')) {
+        const ok = await showConfirm('删除说话人', `确定删除说话人 "${name}"？`, true);
+        if (!ok) return;
+        SpeakerManager.deleteSpeaker(name);
+        renderSpeakerList(panelId);
+        const srtMap = { singleSpeakerList: 'singleSrt', batchSpeakerList: 'batchSrt', alignSpeakerList: 'alignSrt', wsSpeakerList: 'wsSrt' };
+        renderSrts(srtMap[panelId] || panelId.replace('SpeakerList', 'Srt'));
+        return;
+      }
+      // Toggle: close if already open for this item
+      if (_dropdownAnchor === el) { closeDropdown(); return; }
+      const srtMap = { singleSpeakerList: 'singleSrt', batchSpeakerList: 'batchSrt', alignSpeakerList: 'alignSrt', wsSpeakerList: 'wsSrt' };
+      const srtId = srtMap[panelId] || panelId.replace('SpeakerList', 'Srt');
+      showSpeakerDropdown(el, [
+        { label: '重命名', action: async () => {
+          const newName = await showPrompt('重命名说话人', '请输入新名称', name);
+          if (newName && newName !== name) {
+            SpeakerManager.renameGlobal(name, newName);
+            renderSpeakerList(panelId);
+            renderSrts(srtId);
+          }
+        }},
+        ...(info.count === 0 ? [{ label: '删除', action: async () => {
+          const ok = await showConfirm('删除说话人', `确定删除说话人 "${name}"？`, true);
+          if (!ok) return;
+          SpeakerManager.deleteSpeaker(name);
+          renderSpeakerList(panelId);
+          renderSrts(srtId);
+        }}] : [])
+      ]);
+    });
+    panel.appendChild(el);
+  });
+}
+
+function renderSrts(containerId, options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const { clickable = false, videoEl = null, onActiveChange = null } = options;
+  // Render into .srt-inner if it exists, otherwise use container directly
+  const inner = container.querySelector('.srt-inner') || container;
+  inner.innerHTML = '';
+
+  let activeEl = null;
+  SpeakerManager.segments.forEach(seg => {
+    const div = document.createElement('div');
+    div.className = 'srt-segment';
+    div.dataset.start = seg.startSec;
+    div.dataset.end = seg.endSec;
+
+    let html = `<div class="seg-header">`;
+    if (seg.speakerDisplay) {
+      const info = SpeakerManager.speakers.get(seg.speakerDisplay);
+      const ci = info ? info.colorIndex % 8 : 0;
+      html += `<span class="speaker-badge speaker-${ci}" data-seg="${seg.index}">${seg.speakerDisplay}<span class="badge-edit">▼</span></span>`;
+    }
+    html += `<span class="seg-time">${seg.startTime} → ${seg.endTime}</span></div>`;
+    html += `<div class="seg-text">${seg.text}</div>`;
+    div.innerHTML = html;
+
+    if (clickable && videoEl) {
+      div.addEventListener('click', (e) => {
+        if (e.target.closest('.speaker-badge')) return;
+        if (videoEl.duration) {
+          videoEl.currentTime = seg.startSec;
+          if (onActiveChange) onActiveChange(div);
+          if (activeEl) activeEl.classList.remove('active');
+          div.classList.add('active');
+          activeEl = div;
+        }
+      });
+    }
+
+    // Speaker badge click -> dropdown
+    const badge = div.querySelector('.speaker-badge');
+    if (badge) {
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Toggle: close if already open for this badge
+        if (_dropdownAnchor === badge) { closeDropdown(); return; }
+        const listMap = { singleSrt: 'singleSpeakerList', batchSrt: 'batchSpeakerList', alignSrt: 'alignSpeakerList', wsSrt: 'wsSpeakerList' };
+        const listId = listMap[containerId] || containerId.replace('Srt', 'SpeakerList');
+        const names = SpeakerManager.getNames();
+        const items = names.map(name => {
+          const info = SpeakerManager.speakers.get(name);
+          const ci = info ? info.colorIndex % 8 : 0;
+          return {
+            html: `<span class="speaker-badge speaker-${ci}" style="cursor:pointer;font-size:11px">${name}</span>`,
+            action: () => {
+              SpeakerManager.renameSegment(seg.index, name);
+              renderSpeakerList(listId);
+              renderSrts(containerId, options);
+            }
+          };
+        });
+        items.push({ divider: true });
+        items.push({ label: '+ 新建说话人', action: async () => {
+          const newName = await showPrompt('新建说话人', '请输入新说话人名称');
+          if (newName) {
+            SpeakerManager.renameSegment(seg.index, newName);
+            renderSpeakerList(listId);
+            renderSrts(containerId, options);
+          }
+        }});
+        showSpeakerDropdown(badge, items);
+      });
+    }
+
+    inner.appendChild(div);
+  });
+}
+
+// ── Dropdown Menu ──
+let _dropdownEl = null;
+let _dropdownAnchor = null;
+let _scrollParents = [];
+let _rafId = null;
+
+function repositionDropdown() {
+  if (!_dropdownEl || !_dropdownAnchor) return;
+  if (_rafId) return;
+  _rafId = requestAnimationFrame(() => {
+    _rafId = null;
+    if (!_dropdownEl || !_dropdownAnchor) return;
+    const rect = _dropdownAnchor.getBoundingClientRect();
+    const ddHeight = _dropdownEl.offsetHeight;
+    let top = rect.bottom + 4, left = rect.left;
+    if (top + ddHeight > window.innerHeight) top = rect.top - ddHeight - 4;
+    if (left + _dropdownEl.offsetWidth > window.innerWidth) left = window.innerWidth - _dropdownEl.offsetWidth - 8;
+    _dropdownEl.style.top = top + 'px';
+    _dropdownEl.style.left = left + 'px';
+  });
+}
+
+function closeDropdown() {
+  if (_dropdownEl) { _dropdownEl.remove(); _dropdownEl = null; }
+  _dropdownAnchor = null;
+  _scrollParents.forEach(el => el.removeEventListener('scroll', repositionDropdown));
+  _scrollParents = [];
+  if (_rafId) { cancelAnimationFrame(_rafId); _rafId = null; }
+}
+document.addEventListener('click', closeDropdown);
+
+function showSpeakerDropdown(anchor, items) {
+  closeDropdown();
+  const dd = document.createElement('div');
+  dd.className = 'speaker-dropdown';
+  items.forEach(item => {
+    if (item.divider) {
+      const div = document.createElement('div');
+      div.className = 'dropdown-divider';
+      dd.appendChild(div);
+      return;
+    }
+    const row = document.createElement('div');
+    row.className = 'dropdown-item';
+    if (item.html) {
+      row.innerHTML = item.html;
+    } else {
+      row.textContent = item.label;
+    }
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeDropdown();
+      if (item.action) item.action();
+    });
+    dd.appendChild(row);
+  });
+  document.body.appendChild(dd);
+
+  // Find all scrollable ancestors and listen for scroll to reposition dropdown
+  let el = anchor.parentElement;
+  while (el) {
+    const style = getComputedStyle(el);
+    const overflow = style.overflow + style.overflowY + style.overflowX;
+    if (/(auto|scroll)/.test(overflow)) {
+      el.addEventListener('scroll', repositionDropdown);
+      _scrollParents.push(el);
+    }
+    el = el.parentElement;
+  }
+  window.addEventListener('scroll', repositionDropdown);
+
+  _dropdownEl = dd;
+  _dropdownAnchor = anchor;
+  repositionDropdown();
+}
+
 // ── Single Transcribe ──
 document.getElementById('singleBtn').addEventListener('click', async () => {
   const fileInput = document.getElementById('singleFile');
@@ -202,7 +557,8 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
   btn.innerHTML = '<span class="spinner"></span>处理中...';
   document.getElementById('singleStatus').innerHTML = '<span class="spinner"></span>正在转写...';
   document.getElementById('singleText').value = '';
-  document.getElementById('singleSrt').textContent = '';
+  document.querySelector('#singleSrt .srt-inner').innerHTML = '';
+  document.getElementById('singleSpeakerList').style.display = 'none';
   document.getElementById('singleDownloadArea').style.display = 'none';
 
   try {
@@ -221,7 +577,9 @@ document.getElementById('singleBtn').addEventListener('click', async () => {
       document.getElementById('singleStatus').textContent = '转写完成';
       document.getElementById('singleText').value = data.full_text || '';
       fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
-        document.getElementById('singleSrt').textContent = srt;
+        SpeakerManager.parse(srt);
+        renderSpeakerList('singleSpeakerList');
+        renderSrts('singleSrt');
       });
       if (data.output_folder) {
         // 从 output_folder 提取 UUID（如 a1b2c3d4_single → a1b2c3d4）
@@ -259,7 +617,8 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
   document.getElementById('batchStatus').innerHTML = '<span class="spinner"></span>正在批量处理...';
   document.getElementById('batchLog').textContent = '';
   document.getElementById('batchText').value = '';
-  document.getElementById('batchSrt').textContent = '';
+  document.querySelector('#batchSrt .srt-inner').innerHTML = '';
+  document.getElementById('batchSpeakerList').style.display = 'none';
   document.getElementById('batchFileSelect').innerHTML = '<option value="">-</option>';
   document.getElementById('batchDownloadArea').style.display = 'none';
 
@@ -315,11 +674,14 @@ document.getElementById('batchBtn').addEventListener('click', async () => {
         if (r) {
           document.getElementById('batchText').value = r.full_text || '';
           fetchSrtContent(batchOutFolder, `${r.file_id}_single/全角色.srt`).then(srt => {
-            document.getElementById('batchSrt').textContent = srt;
+            SpeakerManager.parse(srt);
+            renderSpeakerList('batchSpeakerList');
+            renderSrts('batchSrt');
           });
         } else {
           document.getElementById('batchText').value = '';
-          document.getElementById('batchSrt').textContent = '';
+          document.querySelector('#batchSrt .srt-inner').innerHTML = '';
+          document.getElementById('batchSpeakerList').style.display = 'none';
         }
       };
 
@@ -386,7 +748,8 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>对齐中...';
   document.getElementById('alignStatus').innerHTML = '<span class="spinner"></span>正在对齐...';
-  document.getElementById('alignSrt').textContent = '';
+  document.querySelector('#alignSrt .srt-inner').innerHTML = '';
+  document.getElementById('alignSpeakerList').style.display = 'none';
   document.getElementById('alignDownloadArea').style.display = 'none';
 
   try {
@@ -401,7 +764,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     if (data.status === 'success') {
       document.getElementById('alignStatus').textContent = '对齐完成';
       fetchSrtContent(data.output_folder, 'align_result.srt').then(srt => {
-        document.getElementById('alignSrt').textContent = srt;
+        SpeakerManager.parse(srt);
+        renderSpeakerList('alignSpeakerList');
+        renderSrts('alignSrt');
       });
       if (data.output_folder) {
         const fileId = data.output_folder.split('_')[0];
@@ -516,7 +881,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     const file = wsSrtFile.files[0];
     const reader = new FileReader();
     reader.onload = () => {
-      renderWsSegments(reader.result);
+      SpeakerManager.parse(reader.result);
+      renderSpeakerList('wsSpeakerList');
+      renderSrts('wsSrt', { clickable: true, videoEl: wsVideo, onActiveChange: (el) => { wsActiveSeg = el; } });
       showWsSrtSegments();
     };
     reader.readAsText(file);
@@ -604,11 +971,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     // Highlight active segment
     const segs = document.querySelectorAll('#wsSrt .srt-segment');
     let current = null;
-    segs.forEach(seg => {
-      const start = parseFloat(seg.dataset.start || '0');
-      const end = parseFloat(seg.dataset.end || '0');
-      if (wsVideo.currentTime >= start && wsVideo.currentTime < end) {
-        current = seg;
+    SpeakerManager.segments.forEach((seg, i) => {
+      if (wsVideo.currentTime >= seg.startSec && wsVideo.currentTime < seg.endSec) {
+        current = segs[i];
       }
     });
     segs.forEach(s => s.classList.remove('active'));
@@ -653,7 +1018,8 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     btn.innerHTML = '<span class="spinner"></span>处理中...';
     document.getElementById('wsStatus').innerHTML = '<span class="spinner"></span>正在转写...';
     document.getElementById('wsText').value = '';
-    document.getElementById('wsSrt').textContent = '';
+    document.querySelector('#wsSrt .srt-inner').innerHTML = '';
+    document.getElementById('wsSpeakerList').style.display = 'none';
     document.getElementById('wsDownloadArea').style.display = 'none';
 
     try {
@@ -676,7 +1042,9 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
         document.getElementById('wsStatus').textContent = '转写完成';
         document.getElementById('wsText').value = data.full_text || '';
         fetchSrtContent(data.output_folder, '全角色.srt').then(srt => {
-          renderWsSegments(srt);
+          SpeakerManager.parse(srt);
+          renderSpeakerList('wsSpeakerList');
+          renderSrts('wsSrt', { clickable: true, videoEl: wsVideo, onActiveChange: (el) => { wsActiveSeg = el; } });
           showWsSrtSegments();
         });
         if (data.output_folder && wsFileId) {
@@ -696,47 +1064,6 @@ document.getElementById('alignBtn').addEventListener('click', async () => {
     }
   });
 
-  // ── SRT Segments ──
-  function parseSrtTime(ts) {
-    // "00:00:01,500" → seconds
-    const m = ts.match(/(\d+):(\d+):(\d+)[,.](\d+)/);
-    if (!m) return 0;
-    return parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 + parseInt(m[3]) + parseInt(m[4]) / 1000;
-  }
-
-  function renderWsSegments(srt) {
-    const container = document.getElementById('wsSrt');
-    container.innerHTML = '';
-    const blocks = srt.split(/\n\s*\n/);
-    let activeEl = null;
-
-    blocks.forEach(block => {
-      const lines = block.trim().split('\n');
-      if (lines.length < 2) return;
-      // Line 1: index, Line 2: "00:00:01,000 --> 00:00:03,500", rest: text
-      const timeMatch = lines[1].match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
-      if (!timeMatch) return;
-      const startSec = parseSrtTime(timeMatch[1]);
-      const endSec = parseSrtTime(timeMatch[2]);
-      const text = lines.slice(2).join('\n').trim();
-
-      const div = document.createElement('div');
-      div.className = 'srt-segment';
-      div.dataset.start = startSec;
-      div.dataset.end = endSec;
-      div.innerHTML = `<div class="seg-time">${timeMatch[1]} → ${timeMatch[2]}</div><div class="seg-text">${text}</div>`;
-
-      div.addEventListener('click', () => {
-        if (wsVideo.duration) {
-          wsVideo.currentTime = startSec;
-          // Highlight active
-          if (activeEl) activeEl.classList.remove('active');
-          div.classList.add('active');
-          activeEl = div;
-        }
-      });
-
-      container.appendChild(div);
-    });
-  }
+  // ── SRT Segments (active tracking) ──
+  let wsActiveSeg = null;
 })();

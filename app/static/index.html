@@ -86,7 +86,10 @@
           </div>
           <div class="form-group">
             <label>SRT 预览</label>
-            <div class="srt-preview" id="singleSrt"></div>
+            <div class="srt-preview" id="singleSrt">
+              <div class="speaker-list-panel" id="singleSpeakerList" style="display:none"></div>
+              <div class="srt-inner"></div>
+            </div>
           </div>
           <div class="form-group" id="singleDownloadArea" style="display:none">
             <button class="btn-success" id="singleDownloadBtn">下载结果 (ZIP)</button>
@@ -163,7 +166,10 @@
           </div>
           <div class="form-group">
             <label>SRT预览</label>
-            <div class="srt-preview" id="batchSrt"></div>
+            <div class="srt-preview" id="batchSrt">
+              <div class="speaker-list-panel" id="batchSpeakerList" style="display:none"></div>
+              <div class="srt-inner"></div>
+            </div>
           </div>
           <div class="form-group">
             <label>日志</label>
@@ -218,7 +224,10 @@
           </div>
           <div class="form-group">
             <label>对齐 SRT 预览</label>
-            <div class="srt-preview" id="alignSrt"></div>
+            <div class="srt-preview" id="alignSrt">
+              <div class="speaker-list-panel" id="alignSpeakerList" style="display:none"></div>
+              <div class="srt-inner"></div>
+            </div>
           </div>
           <div class="form-group" id="alignDownloadArea" style="display:none">
             <button class="btn-success" id="alignDownloadBtn">下载结果 (SRT)</button>
@@ -255,7 +264,10 @@
             <div class="ws-srt-upload" id="wsSrtUpload">
               <span>拖入或点击上传 SRT 文件</span>
             </div>
-            <div class="srt-segments" id="wsSrt" style="display:none"></div>
+            <div class="srt-segments" id="wsSrt" style="display:none">
+              <div class="speaker-list-panel" id="wsSpeakerList" style="display:none;border-radius:0;border:none;border-bottom:1px solid var(--border);margin-bottom:0"></div>
+              <div class="srt-inner"></div>
+            </div>
           </div>
         </div>
       </div>

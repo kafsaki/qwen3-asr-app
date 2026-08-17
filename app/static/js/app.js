@@ -512,7 +512,8 @@ function renderSpeakerList(panelId, sm) {
         sm.deleteSpeaker(name);
         renderSpeakerList(panelId, sm);
         const srtMap = { singleSpeakerList: 'singleSrt', batchSpeakerList: 'batchSrt', alignSpeakerList: 'alignSrt', wsSpeakerList: 'wsSrt' };
-        renderSrts(srtMap[panelId] || panelId.replace('SpeakerList', 'Srt'), sm);
+        const srtId = srtMap[panelId] || panelId.replace('SpeakerList', 'Srt');
+        renderSrts(srtId, sm, _srtOptions.get(srtId) || {});
         return;
       }
       // Toggle: close if already open for this item
@@ -525,7 +526,7 @@ function renderSpeakerList(panelId, sm) {
           if (newName && newName !== name) {
             sm.renameGlobal(name, newName);
             renderSpeakerList(panelId, sm);
-            renderSrts(srtId, sm);
+            renderSrts(srtId, sm, _srtOptions.get(srtId) || {});
           }
         }},
         ...(info.count === 0 ? [{ label: '删除', action: async () => {
@@ -533,7 +534,7 @@ function renderSpeakerList(panelId, sm) {
           if (!ok) return;
           sm.deleteSpeaker(name);
           renderSpeakerList(panelId, sm);
-          renderSrts(srtId, sm);
+          renderSrts(srtId, sm, _srtOptions.get(srtId) || {});
         }}] : [])
       ]);
     });
@@ -545,6 +546,8 @@ function renderSrts(containerId, sm, options = {}) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const { clickable = false, videoEl = null, onActiveChange = null } = options;
+  // Store options for re-renders triggered by speaker list modifications
+  _srtOptions.set(containerId, options);
   // Render into .srt-inner if it exists, otherwise use container directly
   const inner = container.querySelector('.srt-inner') || container;
   inner.innerHTML = '';
@@ -621,6 +624,7 @@ function renderSrts(containerId, sm, options = {}) {
 // ── Dropdown Menu ──
 let _dropdownEl = null;
 let _dropdownAnchor = null;
+const _srtOptions = new Map();
 let _scrollParents = [];
 let _rafId = null;
 
